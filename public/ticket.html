@@ -74,6 +74,10 @@
   </div>
 
   <script>
+     // --- Récupération de l’ID depuis l’URL ---
+    const pathParts = window.location.pathname.split("/");
+    const ticketId = pathParts[pathParts.length - 1]; // ex: /ticket/936 → "936"
+
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     canvas.width = canvas.offsetWidth;
@@ -82,9 +86,6 @@
     const CX = canvas.width/2;
     const CY = canvas.height/2;
     const R  = 180;
-
-    // Récupère ID ticket depuis l'URL (/ticket/528)
-    const ticketId = window.location.pathname.split("/").pop();
 
     // Vérifie si déjà utilisé
     if (localStorage.getItem("usedTicket-" + ticketId)) {
