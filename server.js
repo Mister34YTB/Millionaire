@@ -124,9 +124,7 @@ app.get("/checkTicket/:id", (req, res) => {
 // Pages web
 // --------------------
 
-/**
- * Page Ticket joueur
- */
+// Toutes les routes /ticket/... renvoient ticket.html
 app.get("/ticket/:id", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "ticket.html"));
 });
