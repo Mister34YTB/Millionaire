@@ -73,103 +73,128 @@
     <div id="alert">⚠️ Veuillez acheter un nouveau ticket</div>
   </div>
 
-  <script>
-    // --- Récupération de l’ID depuis l’URL ---
-    const pathParts = window.location.pathname.split("/");
-    const ticketId = pathParts[pathParts.length - 1]; // ex: /ticket/936 → "936"
+ <script>
+  // --- Récupération de l’ID depuis l’URL ---
+  const pathParts = window.location.pathname.split("/");
+  const ticketId = pathParts[pathParts.length - 1]; // ex: /ticket/936 → "936"
 
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
 
-    const CX = canvas.width/2;
-    const CY = canvas.height/2;
-    const R  = 180;
+  const CX = canvas.width/2;
+  const CY = canvas.height/2;
+  const R  = 180;
 
-    // Vérifier si ticket déjà gratté
-    if (localStorage.getItem("usedTicket-" + ticketId)) {
-      document.getElementById("alert").style.display = "block";
-      canvas.style.display = "none";
-    } else {
-      // Exemple de contenu du ticket (à adapter avec API)
-      const symbols = ["1K€","100€","10€","50€","500€","0","0","0","0"];
-      document.getElementById("ticketNumber").textContent = "N° " + ticketId;
+  document.getElementById("ticketNumber").textContent = "N° " + ticketId;
 
-      ctx.fillStyle = "#ccc";
-      ctx.beginPath();
-      ctx.arc(CX, CY, R, 0, Math.PI*2);
-      ctx.fill();
+  // Vérifier si ticket déjà gratté
+  if (localStorage.getItem("usedTicket-" + ticketId)) {
+    document.getElementById("alert").style.display = "block";
+    canvas.style.display = "none";
+  } else {
+    // 🔹 On récupère les infos réelles du ticket via API
+    fetch(`/checkTicket/${ticketId}`)
+      .then(res => res.json())
+      .then(ticket => {
+        if (ticket.error) {
+          alert("❌ Ticket introuvable !");
+          return;
+        }
 
-      ctx.fillStyle = "black";
-      ctx.font = "bold 24px Arial";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
+        // Création de la grille
+        const symbols = [];
+        if (ticket.gain !== "0") {
+          for (let i = 0; i < 3; i++) symbols.push(ticket.gain);
+        }
+        const possibles = ["1K€","500€","100€","50€","10€","0"];
+        while (symbols.length < 9) {
+          const choice = possibles[Math.floor(Math.random()*possibles.length)];
+          symbols.push(choice);
+        }
+        symbols.sort(() => Math.random()-0.5);
 
-      const cols = 3, rows = 3;
-      const cellSize = (R*1.6) / cols;
-      symbols.forEach((val, idx)=>{
-        const r = Math.floor(idx/cols);
-        const c = idx%cols;
-        ctx.fillText(val, CX + (c-1)*cellSize, CY + (r-1)*cellSize);
-      });
-
-      const prizeImage = new Image();
-      prizeImage.src = canvas.toDataURL();
-
-      prizeImage.onload = () => {
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        ctx.fillStyle = "yellow";
+        // Dessin du ticket
+        ctx.fillStyle = "#ccc";
         ctx.beginPath();
         ctx.arc(CX, CY, R, 0, Math.PI*2);
         ctx.fill();
 
         ctx.fillStyle = "black";
-        ctx.font = "bold 30px Arial";
+        ctx.font = "bold 24px Arial";
         ctx.textAlign = "center";
-        ctx.fillText("GRATTER ICI", CX, CY);
-      };
+        ctx.textBaseline = "middle";
 
-      // ---- Grattage ----
-      let scratching = false;
-      function getPos(e){
-        const rect = canvas.getBoundingClientRect();
-        const x = (e.clientX || e.touches[0].clientX) - rect.left;
-        const y = (e.clientY || e.touches[0].clientY) - rect.top;
-        return {x,y};
-      }
-      function scratch(e){
-        if(!scratching) return;
-        const pos = getPos(e);
-        const dist = Math.hypot(pos.x - CX, pos.y - CY);
-        if(dist < R){
-          ctx.globalCompositeOperation = "destination-out";
+        const cols = 3, rows = 3;
+        const cellSize = (R*1.6) / cols;
+        symbols.forEach((val, idx)=>{
+          const r = Math.floor(idx/cols);
+          const c = idx%cols;
+          ctx.fillText(val, CX + (c-1)*cellSize, CY + (r-1)*cellSize);
+        });
+
+        const prizeImage = new Image();
+        prizeImage.src = canvas.toDataURL();
+        prizeImage.onload = () => {
+          ctx.clearRect(0,0,canvas.width,canvas.height);
+          ctx.fillStyle = "yellow";
           ctx.beginPath();
-          ctx.arc(pos.x, pos.y, 25, 0, Math.PI*2);
+          ctx.arc(CX, CY, R, 0, Math.PI*2);
           ctx.fill();
-          ctx.globalCompositeOperation = "source-over";
-        }
-      }
-      canvas.addEventListener("mousedown", ()=> scratching = true);
-      canvas.addEventListener("mouseup", ()=> {
-        scratching = false;
-        localStorage.setItem("usedTicket-" + ticketId, "true");
-        setTimeout(()=> alert("⏳ Ce ticket va être détruit !"), 500);
-      });
-      canvas.addEventListener("mousemove", scratch);
-      canvas.addEventListener("touchstart", ()=> scratching = true);
-      canvas.addEventListener("touchend", ()=> {
-        scratching = false;
-        localStorage.setItem("usedTicket-" + ticketId, "true");
-        setTimeout(()=> alert("⏳ Ce ticket va être détruit !"), 500);
-      });
-      canvas.addEventListener("touchmove", scratch);
 
-      canvas.style.backgroundImage = `url(${prizeImage.src})`;
-      canvas.style.backgroundRepeat = "no-repeat";
-      canvas.style.backgroundPosition = "center";
-      canvas.style.backgroundSize = "contain";
-    }
-  </script>
+          ctx.fillStyle = "black";
+          ctx.font = "bold 30px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText("GRATTER ICI", CX, CY);
+        };
+
+        // Gestion du grattage
+        let scratching = false;
+        function getPos(e){
+          const rect = canvas.getBoundingClientRect();
+          const x = (e.clientX || e.touches[0].clientX) - rect.left;
+          const y = (e.clientY || e.touches[0].clientY) - rect.top;
+          return {x,y};
+        }
+        function scratch(e){
+          if(!scratching) return;
+          const pos = getPos(e);
+          const dist = Math.hypot(pos.x - CX, pos.y - CY);
+          if(dist < R){
+            ctx.globalCompositeOperation = "destination-out";
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, 25, 0, Math.PI*2);
+            ctx.fill();
+            ctx.globalCompositeOperation = "source-over";
+          }
+        }
+        canvas.addEventListener("mousedown", ()=> scratching = true);
+        canvas.addEventListener("mouseup", ()=> {
+          scratching = false;
+          localStorage.setItem("usedTicket-" + ticketId, "true");
+          setTimeout(()=> alert("⏳ Ce ticket va être détruit !"), 500);
+        });
+        canvas.addEventListener("mousemove", scratch);
+        canvas.addEventListener("touchstart", ()=> scratching = true);
+        canvas.addEventListener("touchend", ()=> {
+          scratching = false;
+          localStorage.setItem("usedTicket-" + ticketId, "true");
+          setTimeout(()=> alert("⏳ Ce ticket va être détruit !"), 500);
+        });
+        canvas.addEventListener("touchmove", scratch);
+
+        canvas.style.backgroundImage = `url(${prizeImage.src})`;
+        canvas.style.backgroundRepeat = "no-repeat";
+        canvas.style.backgroundPosition = "center";
+        canvas.style.backgroundSize = "contain";
+      })
+      .catch(err => {
+        console.error("Erreur API:", err);
+        alert("⚠️ Impossible de charger le ticket !");
+      });
+  }
+</script>
+
 </body>
 </html>
