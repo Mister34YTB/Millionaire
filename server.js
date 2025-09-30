@@ -17,15 +17,15 @@ app.use(express.static("public")); // sert les fichiers HTML/CSS/JS
 const TICKET_FILE = "tickets.json";
 
 const distribution = [
-  { gain: "⭐", count: 5 },          // accès roue
-  { gain: "50K€", count: 2 },       // 50 000
-  { gain: "5K€", count: 10 },       // 5 000
+  { gain: "⭐", count: 5 },
+  { gain: "50K€", count: 2 },
+  { gain: "5K€", count: 10 },
   { gain: "1K€", count: 25 },
   { gain: "500€", count: 40 },
   { gain: "100€", count: 80 },
   { gain: "50€", count: 150 },
-  { gain: "10€", count: 163 },      // ajusté pour 1000 total
-  { gain: "0", count: 525 }         // perdants
+  { gain: "10€", count: 163 },
+  { gain: "0", count: 525 }
 ];
 
 let tickets = [];
@@ -36,11 +36,11 @@ function regenerateTickets() {
   distribution.forEach(d => {
     for (let i = 0; i < d.count; i++) {
       tickets.push({
-        id: String(id).padStart(3, "0"), // 001, 002, ...
+        id: String(id).padStart(3, "0"), // 001, 002...
         gain: d.gain,
         sold: false,
         used: false,
-        code: null // sera généré à l’achat
+        code: null // généré seulement à l’achat
       });
       id++;
     }
@@ -87,7 +87,7 @@ app.get("/api/buyTicket", (req, res) => {
     if (!available.length) break;
     const t = available.pop();
     t.sold = true;
-    // Génère un code à 4 chiffres aléatoire
+    // Génère un code à 4 chiffres
     t.code = Math.floor(1000 + Math.random() * 9000).toString();
     bought.push({ id: t.id, code: t.code });
   }
@@ -96,22 +96,22 @@ app.get("/api/buyTicket", (req, res) => {
   res.json({ tickets: bought });
 });
 
-// Vérification ticket (joueur/admin)
+// Vérification ticket (joueur)
 app.get("/api/ticket/:id", (req, res) => {
-  const { code } = req.query; // ?code=1234
+  const { code } = req.query;
   const t = tickets.find(tt => tt.id === req.params.id);
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
 
-  // Vérification du code
   if (!code || t.code !== code) {
     return res.status(403).json({ error: "Code invalide" });
   }
 
-  if (t.used) {
-    return res.status(410).json({ error: "Ticket déjà utilisé" });
-  }
-
-  res.json({ id: t.id, gain: t.gain, sold: t.sold });
+  res.json({
+    id: t.id,
+    gain: t.gain,
+    sold: t.sold,
+    used: t.used
+  });
 });
 
 // Marquer ticket comme utilisé
@@ -126,6 +126,20 @@ app.post("/api/useTicket/:id", (req, res) => {
   res.json({ success: true, message: "Ticket marqué comme utilisé" });
 });
 
+// Vérification admin (pas besoin de code)
+app.get("/api/admin/checkTicket/:id", (req, res) => {
+  const t = tickets.find(tt => tt.id === req.params.id);
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+
+  res.json({
+    id: t.id,
+    gain: t.gain,
+    sold: t.sold,
+    used: t.used,
+    code: t.code
+  });
+});
+
 // --------------------
 // Pages web
 // --------------------
@@ -137,11 +151,9 @@ app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin.html"));
 });
 
-// Page d'accueil : redirige vers la page de grattage
 app.get("/", (req, res) => {
   res.redirect("/ticket");
 });
-
 
 // --------------------
 loadTickets();

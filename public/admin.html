@@ -26,7 +26,6 @@
   <h1>🛠️ Vérification d’un ticket</h1>
 
   <input type="text" id="ticketId" placeholder="Numéro ex: 001">
-  <input type="text" id="ticketCode" placeholder="Code ex: 1234">
   <button onclick="checkTicket()">Vérifier</button>
 
   <div id="result"></div>
@@ -34,19 +33,21 @@
   <script>
     async function checkTicket() {
       const id = document.getElementById("ticketId").value.trim();
-      const code = document.getElementById("ticketCode").value.trim();
-      if(!id || !code) return alert("⚠️ Entre numéro + code !");
+      if(!id) return alert("⚠️ Entre un numéro !");
 
       try {
-        const res = await fetch(`/api/ticket/${id}?code=${code}`);
+        const res = await fetch(`/api/admin/checkTicket/${id}`);
         const data = await res.json();
 
         if(res.ok){
+          let msg = `🎫 Ticket ${data.id} → `;
           if(data.gain === "0"){
-            document.getElementById("result").innerText = `❌ Ticket ${data.id} : PERDANT`;
+            msg += "❌ PERDANT";
           } else {
-            document.getElementById("result").innerText = `🏆 Ticket ${data.id} : GAGNANT → ${data.gain}`;
+            msg += `🏆 GAGNANT → ${data.gain}`;
           }
+          if(data.used) msg += " (⚠️ déjà utilisé)";
+          document.getElementById("result").innerText = msg;
         } else {
           document.getElementById("result").innerText = `❌ Erreur: ${data.error || "inconnue"}`;
         }
