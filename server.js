@@ -38,7 +38,9 @@ function regenerateTickets() {
       tickets.push({
         id: String(id).padStart(3, "0"), // 001, 002, ...
         gain: d.gain,
-        sold: false
+        sold: false,
+        used: false,
+        code: null // sera généré à l’achat
       });
       id++;
     }
@@ -67,7 +69,7 @@ function shuffle(arr) {
 }
 
 // --------------------
-// API (utilisé par bot & ticket.html)
+// API
 // --------------------
 
 // Achat ticket (appelé par le bot)
@@ -85,30 +87,52 @@ app.get("/api/buyTicket", (req, res) => {
     if (!available.length) break;
     const t = available.pop();
     t.sold = true;
-    bought.push(t.id);
+    // Génère un code à 4 chiffres aléatoire
+    t.code = Math.floor(1000 + Math.random() * 9000).toString();
+    bought.push({ id: t.id, code: t.code });
   }
 
   saveTickets();
   res.json({ tickets: bought });
 });
 
-// Vérification ticket (joueur + admin)
+// Vérification ticket (joueur/admin)
 app.get("/api/ticket/:id", (req, res) => {
+  const { code } = req.query; // ?code=1234
   const t = tickets.find(tt => tt.id === req.params.id);
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+
+  // Vérification du code
+  if (!code || t.code !== code) {
+    return res.status(403).json({ error: "Code invalide" });
+  }
+
+  if (t.used) {
+    return res.status(410).json({ error: "Ticket déjà utilisé" });
+  }
+
   res.json({ id: t.id, gain: t.gain, sold: t.sold });
+});
+
+// Marquer ticket comme utilisé
+app.post("/api/useTicket/:id", (req, res) => {
+  const { code } = req.body;
+  const t = tickets.find(tt => tt.id === req.params.id);
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+  if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
+
+  t.used = true;
+  saveTickets();
+  res.json({ success: true, message: "Ticket marqué comme utilisé" });
 });
 
 // --------------------
 // Pages web
 // --------------------
-
-// Ticket joueur
-app.get("/ticket/:id", (req, res) => {
+app.get("/ticket", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "ticket.html"));
 });
 
-// Page admin
 app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin.html"));
 });
