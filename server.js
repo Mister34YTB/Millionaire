@@ -156,6 +156,16 @@ app.get("/", (req, res) => {
 });
 
 // --------------------
+// Admin - reset tickets
+// --------------------
+app.post("/api/admin/reset", (req, res) => {
+  regenerateTickets();
+  saveTickets();
+  res.json({ success: true, message: "🎟️ Inventaire des tickets réinitialisé." });
+});
+
+
+// --------------------
 loadTickets();
 app.listen(PORT, () =>
   console.log(`✅ Serveur lancé sur http://localhost:${PORT}`)
