@@ -74,8 +74,6 @@
   </div>
 
   <script>
-    const params = new URLSearchParams(window.location.search);
-    const ticketId = params.get("id"); // si tu veux passer l’ID dans l’URL
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     canvas.width = canvas.offsetWidth;
@@ -85,93 +83,127 @@
     const CY = canvas.height/2;
     const R  = 180;
 
-    // Vérifier si ticket déjà gratté
+    // Récupère ID ticket depuis l'URL (/ticket/528)
+    const ticketId = window.location.pathname.split("/").pop();
+
+    // Vérifie si déjà utilisé
     if (localStorage.getItem("usedTicket-" + ticketId)) {
       document.getElementById("alert").style.display = "block";
       canvas.style.display = "none";
     } else {
-      // ---- Génération simple (exemple démo) ----
-      const symbols = ["1K€","100€","10€","50€","500€","0","0","0","0"];
-      document.getElementById("ticketNumber").textContent = "N° " + ticketId;
+      fetch(`/checkTicket/${ticketId}`)
+        .then(r => r.json())
+        .then(ticket => {
+          if (ticket.error) {
+            document.getElementById("alert").innerText = "❌ Ticket introuvable";
+            document.getElementById("alert").style.display = "block";
+            canvas.style.display = "none";
+            return;
+          }
 
-      ctx.fillStyle = "#ccc";
-      ctx.beginPath();
-      ctx.arc(CX, CY, R, 0, Math.PI*2);
-      ctx.fill();
+          document.getElementById("ticketNumber").textContent = "N° " + ticket.id;
 
-      ctx.fillStyle = "black";
-      ctx.font = "bold 24px Arial";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
+          // --- Génération de la grille ---
+          const grid = [];
+          const counts = {};
 
-      const cols = 3, rows = 3;
-      const cellSize = (R*1.6) / cols;
-      symbols.forEach((val, idx)=>{
-        const r = Math.floor(idx/cols);
-        const c = idx%cols;
-        ctx.fillText(val, CX + (c-1)*cellSize, CY + (r-1)*cellSize);
-      });
+          function add(sym) {
+            if (!counts[sym]) counts[sym] = 0;
+            counts[sym]++;
+            grid.push(sym);
+          }
 
-      const prizeImage = new Image();
-      prizeImage.src = canvas.toDataURL();
+          if (ticket.gain !== "0") {
+            for (let i = 0; i < 3; i++) add(ticket.gain);
+          }
 
-      prizeImage.onload = () => {
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        ctx.fillStyle = "yellow";
-        ctx.beginPath();
-        ctx.arc(CX, CY, R, 0, Math.PI*2);
-        ctx.fill();
+          const possibles = ["⭐","50K€","5K€","1K€","500€","100€","50€","10€","0"];
+          while (grid.length < 9) {
+            const choice = possibles[Math.floor(Math.random()*possibles.length)];
+            const max = (choice === ticket.gain ? 3 : 2);
+            if ((counts[choice] || 0) < max) add(choice);
+          }
 
-        ctx.fillStyle = "black";
-        ctx.font = "bold 30px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText("GRATTER ICI", CX, CY);
-      };
+          // Mélange
+          for (let i = grid.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random()*(i+1));
+            [grid[i],grid[j]] = [grid[j],grid[i]];
+          }
 
-      // ---- Grattage ----
-      let scratching = false;
-      function getPos(e){
-        const rect = canvas.getBoundingClientRect();
-        const x = (e.clientX || e.touches[0].clientX) - rect.left;
-        const y = (e.clientY || e.touches[0].clientY) - rect.top;
-        return {x,y};
-      }
-      function scratch(e){
-        if(!scratching) return;
-        const pos = getPos(e);
-        const dist = Math.hypot(pos.x - CX, pos.y - CY);
-        if(dist < R){
-          ctx.globalCompositeOperation = "destination-out";
+          // Dessin
+          ctx.fillStyle = "#ccc";
           ctx.beginPath();
-          ctx.arc(pos.x, pos.y, 25, 0, Math.PI*2);
+          ctx.arc(CX, CY, R, 0, Math.PI*2);
           ctx.fill();
-          ctx.globalCompositeOperation = "source-over";
-        }
-      }
-      canvas.addEventListener("mousedown", ()=> scratching = true);
-      canvas.addEventListener("mouseup", ()=> {
-        scratching = false;
-        // Quand le joueur a fini → marquer ticket utilisé
-        localStorage.setItem("usedTicket-" + ticketId, "true");
-        setTimeout(()=>{
-          alert("⏳ Ce ticket va être détruit !");
-        }, 500);
-      });
-      canvas.addEventListener("mousemove", scratch);
-      canvas.addEventListener("touchstart", ()=> scratching = true);
-      canvas.addEventListener("touchend", ()=> {
-        scratching = false;
-        localStorage.setItem("usedTicket-" + ticketId, "true");
-        setTimeout(()=>{
-          alert("⏳ Ce ticket va être détruit !");
-        }, 500);
-      });
-      canvas.addEventListener("touchmove", scratch);
 
-      canvas.style.backgroundImage = `url(${prizeImage.src})`;
-      canvas.style.backgroundRepeat = "no-repeat";
-      canvas.style.backgroundPosition = "center";
-      canvas.style.backgroundSize = "contain";
+          ctx.fillStyle = "black";
+          ctx.font = "bold 24px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+
+          const cols = 3, rows = 3;
+          const cellSize = (R*1.6) / cols;
+          grid.forEach((val, idx)=>{
+            const r = Math.floor(idx/cols);
+            const c = idx%cols;
+            ctx.fillText(val, CX + (c-1)*cellSize, CY + (r-1)*cellSize);
+          });
+
+          const prizeImage = new Image();
+          prizeImage.src = canvas.toDataURL();
+
+          prizeImage.onload = () => {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle = "yellow";
+            ctx.beginPath();
+            ctx.arc(CX, CY, R, 0, Math.PI*2);
+            ctx.fill();
+
+            ctx.fillStyle = "black";
+            ctx.font = "bold 30px Arial";
+            ctx.fillText("GRATTER ICI", CX, CY);
+          };
+
+          // Grattage
+          let scratching = false;
+          function getPos(e){
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            return {x,y};
+          }
+          function scratch(e){
+            if(!scratching) return;
+            const pos = getPos(e);
+            const dist = Math.hypot(pos.x - CX, pos.y - CY);
+            if(dist < R){
+              ctx.globalCompositeOperation = "destination-out";
+              ctx.beginPath();
+              ctx.arc(pos.x, pos.y, 25, 0, Math.PI*2);
+              ctx.fill();
+              ctx.globalCompositeOperation = "source-over";
+            }
+          }
+          canvas.addEventListener("mousedown", ()=> scratching = true);
+          canvas.addEventListener("mouseup", ()=> {
+            scratching = false;
+            localStorage.setItem("usedTicket-" + ticketId, "true");
+            setTimeout(()=> alert("⏳ Ce ticket va être détruit !"), 500);
+          });
+          canvas.addEventListener("mousemove", scratch);
+          canvas.addEventListener("touchstart", ()=> scratching = true);
+          canvas.addEventListener("touchend", ()=> {
+            scratching = false;
+            localStorage.setItem("usedTicket-" + ticketId, "true");
+            setTimeout(()=> alert("⏳ Ce ticket va être détruit !"), 500);
+          });
+          canvas.addEventListener("touchmove", scratch);
+
+          canvas.style.backgroundImage = `url(${prizeImage.src})`;
+          canvas.style.backgroundRepeat = "no-repeat";
+          canvas.style.backgroundPosition = "center";
+          canvas.style.backgroundSize = "contain";
+        });
     }
   </script>
 </body>
