@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Ticket Millionnaire</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(orange, darkorange);
+    }
+    #ticket {
+      position: relative;
+      width: 800px;
+      height: 500px;
+      border: 4px solid #333;
+      border-radius: 10px;
+      overflow: hidden;
+      text-align: center;
+      background: white;
+    }
+    #logo {
+      position: absolute;
+      top: 10px;
+      width: 100%;
+      font-size: 40px;
+      font-weight: bold;
+      color: #0044cc;
+      text-shadow: 2px 2px 4px white;
+    }
+    #ticketNumber {
+      position: absolute;
+      bottom: 10px;
+      left: 15px;
+      font-size: 20px;
+      font-weight: bold;
+      font-family: monospace;
+      color: #333;
+    }
+    #canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="ticket">
+    <div id="logo">Millionnaire</div>
+    <div id="ticketNumber"></div>
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+
+    const CX = canvas.width/2;
+    const CY = canvas.height/2;
+    const R  = 180; // rayon du cercle grattable
+
+    // =============================
+    // 1. Distribution des 1000 tickets
+    // =============================
+    const distribution = [
+      {gain: "1K€",   count: 25},
+      {gain: "500€",  count: 40},
+      {gain: "100€",  count: 80},
+      {gain: "50€",   count: 150},
+      {gain: "10€",   count: 300},
+      {gain: "0",     count: 405} // perdants
+    ];
+
+    function shuffle(arr){
+      for(let i=arr.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+    }
+
+    function initPool() {
+      let arr = [];
+      distribution.forEach(d=>{
+        for(let i=0;i<d.count;i++) arr.push(d.gain);
+      });
+      shuffle(arr);
+      return arr;
+    }
+
+    // Charger depuis localStorage
+    let pool = JSON.parse(localStorage.getItem("ticketPool") || "null");
+    let ticketIndex = JSON.parse(localStorage.getItem("ticketIndex") || "0");
+
+    if(!pool || pool.length === 0){
+      pool = initPool();
+      ticketIndex = 0;
+      localStorage.setItem("ticketPool", JSON.stringify(pool));
+      localStorage.setItem("ticketIndex", ticketIndex);
+    }
+
+    function savePool(){
+      localStorage.setItem("ticketPool", JSON.stringify(pool));
+      localStorage.setItem("ticketIndex", ticketIndex);
+    }
+
+    // =============================
+    // 2. Génération d’un ticket unique
+    // =============================
+    function generateTicket() {
+      if (pool.length === 0) {
+        // Nouvelle série
+        pool = initPool();
+        ticketIndex = 0;
+      }
+
+      const lot = pool.pop();
+      ticketIndex++;
+      savePool();
+
+      const symbols = [];
+      const counts = {};
+
+      function addSymbol(sym) {
+        if (!counts[sym]) counts[sym] = 0;
+        counts[sym]++;
+        symbols.push(sym);
+      }
+
+      if (lot !== "0") {
+        for (let i = 0; i < 3; i++) addSymbol(lot);
+      }
+
+      const possibles = ["1K€", "500€", "100€", "50€", "10€"];
+      while (symbols.length < 9) {
+        const choice = possibles[Math.floor(Math.random() * possibles.length)];
+        const maxAllowed = (choice === lot ? 3 : 2);
+        if ((counts[choice] || 0) < maxAllowed) {
+          if (lot === "0" && (counts[choice] || 0) >= 2) continue;
+          addSymbol(choice);
+        }
+      }
+
+      shuffle(symbols);
+
+      // Format numéro de ticket style FDJ
+      const number = String(ticketIndex).padStart(3, "0");
+
+      return { lot, grid: symbols, number };
+    }
+
+    // =============================
+    // 3. Affichage de la grille
+    // =============================
+    const ticket = generateTicket();
+    if (!ticket) throw new Error("Impossible de générer un ticket !");
+
+    document.getElementById("ticketNumber").textContent = "N° " + ticket.number;
+
+    function formatGain(txt) {
+      return txt.replace("50 000 €", "50K€")
+                .replace("5 000 €", "5K€")
+                .replace("1 000 €", "1K€");
+    }
+
+    ctx.fillStyle = "#ccc";
+    ctx.beginPath();
+    ctx.arc(CX, CY, R, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle = "black";
+    ctx.font = "bold 24px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const cols = 3, rows = 3;
+    const cellSize = (R*1.6) / cols;
+
+    ticket.grid.forEach((val, idx)=>{
+      const r = Math.floor(idx/cols);
+      const c = idx%cols;
+      ctx.fillText(formatGain(val), CX + (c-1)*cellSize, CY + (r-1)*cellSize);
+    });
+
+    // Sauvegarde en image
+    const prizeImage = new Image();
+    prizeImage.src = canvas.toDataURL();
+
+    prizeImage.onload = () => {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = "yellow";
+      ctx.beginPath();
+      ctx.arc(CX, CY, R, 0, Math.PI*2);
+      ctx.fill();
+
+      ctx.fillStyle = "black";
+      ctx.font = "bold 30px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText("GRATTER ICI", CX, CY);
+    };
+
+    // =============================
+    // 4. Grattage
+    // =============================
+    let scratching = false;
+    function getPos(e){
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX || e.touches[0].clientX) - rect.left;
+      const y = (e.clientY || e.touches[0].clientY) - rect.top;
+      return {x,y};
+    }
+
+    function scratch(e){
+      if(!scratching) return;
+      const pos = getPos(e);
+      const dist = Math.hypot(pos.x - CX, pos.y - CY);
+      if(dist < R){
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 25, 0, Math.PI*2);
+        ctx.fill();
+        ctx.globalCompositeOperation = "source-over";
+      }
+    }
+
+    canvas.addEventListener("mousedown", ()=> scratching = true);
+    canvas.addEventListener("mouseup", ()=> scratching = false);
+    canvas.addEventListener("mousemove", scratch);
+    canvas.addEventListener("touchstart", ()=> scratching = true);
+    canvas.addEventListener("touchend", ()=> scratching = false);
+    canvas.addEventListener("touchmove", scratch);
+
+    canvas.style.backgroundImage = `url(${prizeImage.src})`;
+    canvas.style.backgroundRepeat = "no-repeat";
+    canvas.style.backgroundPosition = "center";
+    canvas.style.backgroundSize = "contain";
+  </script>
+</body>
+</html>

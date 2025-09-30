@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Admin - Vérification Ticket</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      padding: 30px;
+      text-align: center;
+    }
+    input, button {
+      font-size: 18px;
+      padding: 8px 12px;
+      margin: 10px;
+    }
+    #result {
+      margin-top: 20px;
+      font-size: 22px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>🛠️ Vérification d’un ticket</h1>
+  <input type="text" id="ticketId" placeholder="Numéro ex: 001">
+  <button onclick="checkTicket()">Vérifier</button>
+
+  <div id="result"></div>
+
+  <script>
+    async function checkTicket(){
+      const id = document.getElementById("ticketId").value;
+      if(!id) return alert("Entre un numéro !");
+      const res = await fetch(`/checkTicket/${id}`);
+      if(res.ok){
+        const data = await res.json();
+        if(data.gain === "0"){
+          document.getElementById("result").innerText = `❌ Ticket ${data.id} : PERDANT`;
+        } else {
+          document.getElementById("result").innerText = `🏆 Ticket ${data.id} : GAGNANT → ${data.gain}`;
+        }
+      } else {
+        document.getElementById("result").innerText = "❌ Ticket introuvable";
+      }
+    }
+  </script>
+</body>
+</html>
