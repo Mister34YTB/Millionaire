@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 app.use(cors());
-app.use(express.static("public")); // Sert les fichiers statiques (css/js/images)
+app.use(express.static("public")); // sert les fichiers HTML/CSS/JS
 
 // --------------------
 // Gestion des tickets
@@ -17,15 +17,15 @@ app.use(express.static("public")); // Sert les fichiers statiques (css/js/images
 const TICKET_FILE = "tickets.json";
 
 const distribution = [
-  { gain: "⭐", count: 5 },
-  { gain: "50K€", count: 2 },
-  { gain: "5K€", count: 10 },
+  { gain: "⭐", count: 5 },          // accès roue
+  { gain: "50K€", count: 2 },       // 50 000
+  { gain: "5K€", count: 10 },       // 5 000
   { gain: "1K€", count: 25 },
   { gain: "500€", count: 40 },
   { gain: "100€", count: 80 },
   { gain: "50€", count: 150 },
-  { gain: "10€", count: 163 },
-  { gain: "0", count: 525 }
+  { gain: "10€", count: 163 },      // ajusté pour 1000 total
+  { gain: "0", count: 525 }         // perdants
 ];
 
 let tickets = [];
@@ -36,7 +36,7 @@ function regenerateTickets() {
   distribution.forEach(d => {
     for (let i = 0; i < d.count; i++) {
       tickets.push({
-        id: String(id).padStart(3, "0"),
+        id: String(id).padStart(3, "0"), // 001, 002, ...
         gain: d.gain,
         sold: false
       });
@@ -67,11 +67,11 @@ function shuffle(arr) {
 }
 
 // --------------------
-// API
+// API (utilisé par bot & ticket.html)
 // --------------------
 
-// Achat ticket (utilisé par le bot)
-app.get("/buyTicket", (req, res) => {
+// Achat ticket (appelé par le bot)
+app.get("/api/buyTicket", (req, res) => {
   const count = parseInt(req.query.count) || 1;
 
   let available = tickets.filter(t => !t.sold);
@@ -92,25 +92,18 @@ app.get("/buyTicket", (req, res) => {
   res.json({ tickets: bought });
 });
 
-// Vérification admin
-app.get("/checkTicket/:id", (req, res) => {
-  const t = tickets.find(tt => tt.id === req.params.id);
-  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
-  res.json({ id: t.id, gain: t.gain, sold: t.sold });
-});
-
-// API pour récupérer les infos d’un ticket côté joueur
+// Vérification ticket (joueur + admin)
 app.get("/api/ticket/:id", (req, res) => {
   const t = tickets.find(tt => tt.id === req.params.id);
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
-  res.json(t);
+  res.json({ id: t.id, gain: t.gain, sold: t.sold });
 });
 
 // --------------------
 // Pages web
 // --------------------
 
-// Ticket joueur (grattage)
+// Ticket joueur
 app.get("/ticket/:id", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "ticket.html"));
 });
@@ -122,4 +115,6 @@ app.get("/admin", (req, res) => {
 
 // --------------------
 loadTickets();
-app.listen(PORT, () => console.log(`✅ Serveur lancé sur http://localhost:${PORT}`));
+app.listen(PORT, () =>
+  console.log(`✅ Serveur lancé sur http://localhost:${PORT}`)
+);
