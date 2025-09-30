@@ -24,25 +24,34 @@
 </head>
 <body>
   <h1>🛠️ Vérification d’un ticket</h1>
+
   <input type="text" id="ticketId" placeholder="Numéro ex: 001">
+  <input type="text" id="ticketCode" placeholder="Code ex: 1234">
   <button onclick="checkTicket()">Vérifier</button>
 
   <div id="result"></div>
 
   <script>
-    async function checkTicket(){
-      const id = document.getElementById("ticketId").value;
-      if(!id) return alert("Entre un numéro !");
-      const res = await fetch(`/checkTicket/${id}`);
-      if(res.ok){
+    async function checkTicket() {
+      const id = document.getElementById("ticketId").value.trim();
+      const code = document.getElementById("ticketCode").value.trim();
+      if(!id || !code) return alert("⚠️ Entre numéro + code !");
+
+      try {
+        const res = await fetch(`/api/ticket/${id}?code=${code}`);
         const data = await res.json();
-        if(data.gain === "0"){
-          document.getElementById("result").innerText = `❌ Ticket ${data.id} : PERDANT`;
+
+        if(res.ok){
+          if(data.gain === "0"){
+            document.getElementById("result").innerText = `❌ Ticket ${data.id} : PERDANT`;
+          } else {
+            document.getElementById("result").innerText = `🏆 Ticket ${data.id} : GAGNANT → ${data.gain}`;
+          }
         } else {
-          document.getElementById("result").innerText = `🏆 Ticket ${data.id} : GAGNANT → ${data.gain}`;
+          document.getElementById("result").innerText = `❌ Erreur: ${data.error || "inconnue"}`;
         }
-      } else {
-        document.getElementById("result").innerText = "❌ Ticket introuvable";
+      } catch (e) {
+        document.getElementById("result").innerText = "❌ Erreur serveur";
       }
     }
   </script>
