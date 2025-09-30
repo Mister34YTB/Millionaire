@@ -137,6 +137,12 @@ app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin.html"));
 });
 
+// Page d'accueil : redirige vers la page de grattage
+app.get("/", (req, res) => {
+  res.redirect("/ticket");
+});
+
+
 // --------------------
 loadTickets();
 app.listen(PORT, () =>
