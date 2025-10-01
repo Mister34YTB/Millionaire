@@ -1,162 +1,133 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Ticket Pile ou Face</title>
+  <meta charset="utf-8">
+  <title>🎟️ Ticket Pile ou Face</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #e6f0ff;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
+      background: #dfe6f1;
+      font-family: Arial, sans-serif;
     }
-
     .ticket {
       position: relative;
-      width: 400px;
-      height: 400px;
+      width: 500px;
+      height: 500px;
       border-radius: 50%;
-      background: linear-gradient(to bottom, #2f5ba7, #34e1ff);
-      border: 6px solid gold;
+      background: linear-gradient(to bottom, #2563eb, #22d3ee);
+      border: 8px solid gold;
       text-align: center;
-      color: black;
       overflow: hidden;
     }
-
     .logo {
       position: absolute;
       top: 10px;
       left: 10px;
       width: 80px;
-      height: auto;
-      z-index: 3;
     }
-
     .title {
       margin-top: 40px;
       font-size: 36px;
       font-weight: bold;
+      color: black;
     }
-
     .coin {
-      margin: 40px auto 20px;
-      width: 160px;
-      height: 160px;
+      position: absolute;
+      top: 150px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      height: 200px;
       border-radius: 50%;
       background: gold;
-      line-height: 160px;
+      border: 5px solid black;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 40px;
       font-weight: bold;
-      border: 4px solid black;
-      position: relative;
-      z-index: 1;
     }
-
     .gain {
-      margin: auto;
-      width: 180px;
-      padding: 15px;
+      position: absolute;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 250px;
+      height: 70px;
       background: gold;
       border: 4px solid black;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 28px;
       font-weight: bold;
-      border-radius: 6px;
-      position: relative;
-      z-index: 1;
     }
-
-    /* Zone grattable : uniquement sur la pièce et le gain */
     canvas {
       position: absolute;
       top: 0;
       left: 0;
-      z-index: 2;
-      pointer-events: auto;
-    }
-
-    .footer {
-      position: absolute;
-      bottom: 10px;
-      right: 10px;
-      font-size: 14px;
-      color: #222;
     }
   </style>
 </head>
 <body>
   <div class="ticket">
-    <!-- ✅ Ajout du logo -->
-    <img src="https://i.imgur.com/2dpxaTk.png" class="logo" alt="Logo GDJ">
-    
-    <div class="title" id="type">PILE</div>
-    <div class="coin" id="piece">PILE</div>
-    <div class="gain" id="gain">5000€</div>
-    <div class="footer" id="ticketId">Ticket #1234</div>
-
-    <!-- Canvas pour grattage -->
-    <canvas id="scratchCanvas" width="400" height="400"></canvas>
+    <img src="https://i.imgur.com/mC4xV4P.png" class="logo" alt="GDJ">
+    <div class="title" id="ticketType">PILE</div>
+    <div class="coin" id="coinText">FACE</div>
+    <div class="gain" id="gainText">5000€</div>
+    <canvas id="scratch" width="500" height="500"></canvas>
   </div>
 
   <script>
+    // Récupération des paramètres URL
     const urlParams = new URLSearchParams(window.location.search);
-    const ticketId = urlParams.get("id");
+    const id = urlParams.get("id");
     const code = urlParams.get("code");
 
     async function loadTicket() {
-      try {
-        const res = await fetch(`/api/pof/ticket/${ticketId}?code=${code}`);
-        const data = await res.json();
-        if (res.ok) {
-          document.getElementById("type").innerText = data.type;
-          document.getElementById("piece").innerText = data.type;
-          document.getElementById("gain").innerText = (data.gain === "0") ? "PERDU" : data.gain;
-          document.getElementById("ticketId").innerText = `Ticket #${data.id}`;
-        } else {
-          alert("Erreur : " + (data.error || "inconnue"));
-        }
-      } catch (e) {
-        alert("Erreur serveur");
+      const res = await fetch(`/api/pof/ticket/${id}?code=${code}`);
+      if (!res.ok) {
+        alert("❌ Erreur: ticket introuvable ou code invalide.");
+        return;
       }
+      const data = await res.json();
+
+      // Remplir le ticket
+      document.getElementById("ticketType").innerText = data.type;
+      document.getElementById("coinText").innerText = (Math.random() < 0.5 ? "PILE" : "FACE");
+      document.getElementById("gainText").innerText = data.gain === "0" ? "PERDU" : data.gain;
+
+      // Stocker logique de vérification
+      window.ticketData = data;
     }
 
     loadTicket();
 
-    // --- Effet grattage uniquement sur zones jaune ---
-    const canvas = document.getElementById("scratchCanvas");
+    // --- Grattage avec canvas ---
+    const canvas = document.getElementById("scratch");
     const ctx = canvas.getContext("2d");
-
-    function initMask() {
-      ctx.fillStyle = "#888";
-      // cercle sur la pièce
-      ctx.beginPath();
-      ctx.arc(200, 160, 80, 0, Math.PI * 2);
-      ctx.fill();
-      // rectangle zone gain
-      ctx.fillRect(110, 250, 180, 70);
-      ctx.globalCompositeOperation = "destination-out";
-    }
-    initMask();
+    ctx.fillStyle = "gray";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     let scratching = false;
-    function scratch(e) {
-      if (!scratching) return;
-      e.preventDefault();
-      const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX || e.touches[0].clientX) - rect.left;
-      const y = (e.clientY || e.touches[0].clientY) - rect.top;
-      ctx.beginPath();
-      ctx.arc(x, y, 20, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
     canvas.addEventListener("mousedown", () => scratching = true);
     canvas.addEventListener("mouseup", () => scratching = false);
     canvas.addEventListener("mousemove", scratch);
-    canvas.addEventListener("touchstart", () => scratching = true);
-    canvas.addEventListener("touchend", () => scratching = false);
-    canvas.addEventListener("touchmove", scratch);
+
+    function scratch(e) {
+      if (!scratching) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath();
+      ctx.arc(x, y, 25, 0, 2 * Math.PI);
+      ctx.fill();
+    }
   </script>
 </body>
 </html>
