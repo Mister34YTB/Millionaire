@@ -15,9 +15,9 @@
     .ticket {
       position: relative;
       width: 500px;
-      height: 500px;
-      border-radius: 50%;
-      background: linear-gradient(to bottom, #2563eb, #22d3ee);
+      height: 600px;
+      border-radius: 20px;
+      background: linear-gradient(to bottom, #1e3a8a, #06b6d4);
       border: 8px solid gold;
       text-align: center;
       overflow: hidden;
@@ -32,11 +32,11 @@
       margin-top: 40px;
       font-size: 36px;
       font-weight: bold;
-      color: black;
+      color: white;
     }
     .coin {
       position: absolute;
-      top: 150px;
+      top: 140px;
       left: 50%;
       transform: translateX(-50%);
       width: 200px;
@@ -53,7 +53,7 @@
     }
     .gain {
       position: absolute;
-      bottom: 80px;
+      bottom: 120px;
       left: 50%;
       transform: translateX(-50%);
       width: 250px;
@@ -67,6 +67,13 @@
       font-weight: bold;
       z-index: 1;
     }
+    .ticket-id {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      font-size: 16px;
+      color: white;
+    }
     canvas {
       position: absolute;
       top: 0;
@@ -76,16 +83,16 @@
   </style>
 </head>
 <body>
-  <div class="ticket">
+  <div class="ticket" id="ticketContainer">
     <img src="https://i.imgur.com/mC4xV4P.png" class="logo" alt="GDJ">
     <div class="title" id="ticketType">PILE</div>
     <div class="coin" id="coinText">FACE</div>
-    <div class="gain" id="gainText">5000€</div>
-    <canvas id="scratch" width="500" height="500"></canvas>
+    <div class="gain" id="gainText">???</div>
+    <div class="ticket-id" id="ticketIdText">#0001</div>
+    <canvas id="scratch" width="500" height="600"></canvas>
   </div>
 
   <script>
-    // Récupération des paramètres URL
     const urlParams = new URLSearchParams(window.location.search);
     const id = urlParams.get("id");
     const code = urlParams.get("code");
@@ -93,20 +100,22 @@
     async function loadTicket() {
       const res = await fetch(`/api/pof/ticket/${id}?code=${code}`);
       if (!res.ok) {
-        alert("❌ Erreur: ticket introuvable ou code invalide.");
+        document.body.innerHTML = "<h1>❌ Ticket introuvable ou code invalide.</h1>";
         return;
       }
       const data = await res.json();
 
-      // Affiche le type officiel du ticket (PILE ou FACE en haut)
+      // Ticket déjà utilisé
+      if (data.used) {
+        document.body.innerHTML = "<h1>⚠️ Ce ticket a déjà été utilisé.<br>Achetez un autre ticket.</h1>";
+        return;
+      }
+
+      // Affichage infos
       document.getElementById("ticketType").innerText = data.type;
-
-      // pièce affichée = revealed
-document.getElementById("coinText").innerText = data.revealed;
-
-// zone gain
-document.getElementById("gainText").innerText = data.gain;
-
+      document.getElementById("coinText").innerText = data.revealed || data.type;
+      document.getElementById("gainText").innerText = data.gain;
+      document.getElementById("ticketIdText").innerText = `#${data.id}`;
 
       window.ticketData = data;
     }
@@ -120,6 +129,9 @@ document.getElementById("gainText").innerText = data.gain;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     let scratching = false;
+    let scratchedPixels = 0;
+    const totalPixels = canvas.width * canvas.height;
+
     canvas.addEventListener("mousedown", () => scratching = true);
     canvas.addEventListener("mouseup", () => scratching = false);
     canvas.addEventListener("mousemove", scratch);
@@ -134,6 +146,27 @@ document.getElementById("gainText").innerText = data.gain;
       ctx.beginPath();
       ctx.arc(x, y, 25, 0, 2 * Math.PI);
       ctx.fill();
+
+      scratchedPixels += Math.PI * 25 * 25;
+      if (scratchedPixels > totalPixels * 0.5) {
+        markUsed();
+      }
+    }
+
+    async function markUsed() {
+      if (!window.ticketData || window.ticketData.used) return;
+
+      const res = await fetch(`/api/pof/use/${window.ticketData.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: window.ticketData.code })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        window.ticketData.used = true;
+        alert("🗑️ Ce ticket est détruit après utilisation !");
+      }
     }
   </script>
 </body>

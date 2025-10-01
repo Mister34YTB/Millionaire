@@ -40,10 +40,9 @@ const POF_DISTRIBUTION = [
   { gain: "5€", count: 300 },
   { gain: "2€", count: 400 },
   { gain: "1€", count: 1000 }
-  // ⚠️ pas de "0"
 ];
 
-const WIN_PROB = 0.5; // probabilité qu’un ticket POF soit gagnant
+const WIN_PROB = 1 / 8; // probabilité de ticket gagnant
 
 let tickets = [];
 let pofTickets = [];
@@ -77,33 +76,37 @@ function regenerateTickets() {
 }
 
 function regeneratePOFTickets() {
-  let pool = [];
-  POF_DISTRIBUTION.forEach(d => {
-    for (let i = 0; i < d.count; i++) pool.push(d.gain);
-  });
-  shuffle(pool);
+  pofTickets = [];
 
-  pofTickets = pool.map((gain, index) => {
-    const ticketType = Math.random() < 0.5 ? "PILE" : "FACE"; // côté attendu
+  for (let i = 0; i < 5000; i++) {
+    const ticketType = Math.random() < 0.5 ? "PILE" : "FACE";
     let revealed;
+    let gain = "0"; // par défaut = perdant
 
-    // probabilité de gagner
     if (Math.random() < WIN_PROB) {
-      revealed = ticketType; // gagnant
+      // 🎉 ticket gagnant
+      const pool = [];
+      POF_DISTRIBUTION.forEach(d => {
+        for (let j = 0; j < d.count; j++) pool.push(d.gain);
+      });
+      shuffle(pool);
+      gain = pool[Math.floor(Math.random() * pool.length)];
+      revealed = ticketType; // même côté = gagnant
     } else {
-      revealed = ticketType === "PILE" ? "FACE" : "PILE"; // perdant
+      // ❌ ticket perdant
+      revealed = ticketType === "PILE" ? "FACE" : "PILE";
     }
 
-    return {
-      id: String(index + 1).padStart(4, "0"),
-      type: ticketType,     // le côté attendu
-      revealed,             // ce que voit le joueur
-      gain,                 // valeur du lot
+    pofTickets.push({
+      id: String(i + 1).padStart(4, "0"),
+      type: ticketType,
+      revealed,
+      gain,
       sold: false,
       used: false,
       code: null
-    };
-  });
+    });
+  }
 
   fs.writeFileSync(POF_FILE, JSON.stringify(pofTickets, null, 2));
 }
@@ -182,7 +185,6 @@ app.get("/api/buyPOF", (req, res) => {
   res.json({ tickets: bought });
 });
 
-// ✅ règle corrigée : si revealed != type => PERDU
 app.get("/api/pof/ticket/:id", (req, res) => {
   const { code } = req.query;
   const t = pofTickets.find(tt => tt.id === req.params.id);
@@ -190,15 +192,14 @@ app.get("/api/pof/ticket/:id", (req, res) => {
   if (!code || t.code !== code) return res.status(403).json({ error: "Code invalide" });
 
   let realGain = "PERDU";
-  if (t.type === t.revealed) {
-    // si la pièce révélée correspond au type du ticket → gagnant
+  if (t.type === t.revealed && t.gain !== "0") {
     realGain = t.gain;
   }
 
   res.json({
     id: t.id,
-    type: t.type,       // côté attendu
-    revealed: t.revealed, // ce qui est gratté
+    type: t.type,
+    revealed: t.revealed,
     gain: realGain,
     sold: t.sold,
     used: t.used,
@@ -206,6 +207,17 @@ app.get("/api/pof/ticket/:id", (req, res) => {
   });
 });
 
+// Marquer un ticket POF comme utilisé
+app.post("/api/pof/use/:id", (req, res) => {
+  const { code } = req.body;
+  const t = pofTickets.find(tt => tt.id === req.params.id);
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+  if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
+
+  t.used = true;
+  fs.writeFileSync(POF_FILE, JSON.stringify(pofTickets, null, 2));
+  res.json({ success: true, message: "Ticket marqué comme utilisé" });
+});
 
 // --------------------
 // Pages web
@@ -240,7 +252,7 @@ app.get("/api/admin/checkPOF/:id", (req, res) => {
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
 
   let realGain = "PERDU";
-  if (t.type === t.revealed) {
+  if (t.type === t.revealed && t.gain !== "0") {
     realGain = t.gain;
   }
 
