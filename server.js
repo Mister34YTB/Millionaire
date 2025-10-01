@@ -40,9 +40,10 @@ const POF_DISTRIBUTION = [
   { gain: "5€", count: 300 },
   { gain: "2€", count: 400 },
   { gain: "1€", count: 1000 }
+  // ⚠️ pas de "0"
 ];
 
-const WIN_PROB = 1 / 8; // probabilité de ticket gagnant
+const WIN_PROB = 1 / 8; // ✅ 1 chance sur 8 de gagner
 
 let tickets = [];
 let pofTickets = [];
@@ -80,21 +81,23 @@ function regeneratePOFTickets() {
 
   for (let i = 0; i < 5000; i++) {
     const ticketType = Math.random() < 0.5 ? "PILE" : "FACE";
-    let revealed;
-    let gain = "0"; // par défaut = perdant
+    let revealed, gain = "0";
 
     if (Math.random() < WIN_PROB) {
-      // 🎉 ticket gagnant
+      // ✅ Ticket gagnant
+      revealed = ticketType;
+
+      // Tirer un gain dans la distribution
       const pool = [];
       POF_DISTRIBUTION.forEach(d => {
         for (let j = 0; j < d.count; j++) pool.push(d.gain);
       });
       shuffle(pool);
       gain = pool[Math.floor(Math.random() * pool.length)];
-      revealed = ticketType; // même côté = gagnant
     } else {
-      // ❌ ticket perdant
+      // ❌ Ticket perdant
       revealed = ticketType === "PILE" ? "FACE" : "PILE";
+      gain = "0";
     }
 
     pofTickets.push({
