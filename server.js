@@ -30,22 +30,30 @@ const distribution = [
 
 let tickets = [];
 
+// --------------------
+// Fonctions Tickets
+// --------------------
 function regenerateTickets() {
-  tickets = [];
-  let id = 1;
+  // Crée une "pool" de tous les gains
+  let pool = [];
   distribution.forEach(d => {
     for (let i = 0; i < d.count; i++) {
-      tickets.push({
-        id: String(id).padStart(3, "0"), // 001, 002...
-        gain: d.gain,
-        sold: false,
-        used: false,
-        code: null // généré seulement à l’achat
-      });
-      id++;
+      pool.push(d.gain);
     }
   });
-  shuffle(tickets);
+
+  // Mélange aléatoirement les gains
+  shuffle(pool);
+
+  // Génère les tickets avec ID séquentiel et gain aléatoire
+  tickets = pool.map((gain, index) => ({
+    id: String(index + 1).padStart(3, "0"), // 001, 002...
+    gain: gain,
+    sold: false,
+    used: false,
+    code: null
+  }));
+
   saveTickets();
 }
 
@@ -163,7 +171,6 @@ app.post("/api/admin/reset", (req, res) => {
   saveTickets();
   res.json({ success: true, message: "🎟️ Inventaire des tickets réinitialisé." });
 });
-
 
 // --------------------
 loadTickets();
