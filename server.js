@@ -45,14 +45,23 @@ function regenerateTickets() {
   // Mélange aléatoirement les gains
   shuffle(pool);
 
-  // Génère les tickets avec ID séquentiel et gain aléatoire
-  tickets = pool.map((gain, index) => ({
-    id: String(index + 1).padStart(3, "0"), // 001, 002...
-    gain: gain,
-    sold: false,
-    used: false,
-    code: null
-  }));
+  // Génère les tickets avec ID séquentiel
+  tickets = pool.map((gain, index) => {
+    let ticketId;
+    if (index + 1 === 1000) {
+      ticketId = "000"; // le dernier ticket est 000
+    } else {
+      ticketId = String(index + 1).padStart(3, "0"); // 001 → 999
+    }
+
+    return {
+      id: ticketId,
+      gain: gain,
+      sold: false,
+      used: false,
+      code: null
+    };
+  });
 
   saveTickets();
 }
@@ -93,9 +102,12 @@ app.get("/api/buyTicket", (req, res) => {
   const bought = [];
   for (let i = 0; i < count; i++) {
     if (!available.length) break;
-    const t = available.pop();
+
+    // Tire un ticket au hasard dans la liste
+    const idx = Math.floor(Math.random() * available.length);
+    const t = available.splice(idx, 1)[0];
+
     t.sold = true;
-    // Génère un code à 4 chiffres
     t.code = Math.floor(1000 + Math.random() * 9000).toString();
     bought.push({ id: t.id, code: t.code });
   }
