@@ -84,19 +84,21 @@ function regeneratePOFTickets() {
   shuffle(pool);
 
   pofTickets = pool.map((gain, index) => {
-    const ticketType = Math.random() < 0.5 ? "PILE" : "FACE"; // le type attendu
-    const revealed =
-      Math.random() < WIN_PROB
-        ? ticketType
-        : ticketType === "PILE"
-        ? "FACE"
-        : "PILE"; // ce que le joueur verra
+    const ticketType = Math.random() < 0.5 ? "PILE" : "FACE"; // côté attendu
+    let revealed;
+
+    // probabilité de gagner
+    if (Math.random() < WIN_PROB) {
+      revealed = ticketType; // gagnant
+    } else {
+      revealed = ticketType === "PILE" ? "FACE" : "PILE"; // perdant
+    }
 
     return {
       id: String(index + 1).padStart(4, "0"),
-      type: ticketType, // attendu
-      revealed, // révélé
-      gain, // lot associé
+      type: ticketType,     // le côté attendu
+      revealed,             // ce que voit le joueur
+      gain,                 // valeur du lot
       sold: false,
       used: false,
       code: null
@@ -189,19 +191,21 @@ app.get("/api/pof/ticket/:id", (req, res) => {
 
   let realGain = "PERDU";
   if (t.type === t.revealed) {
+    // si la pièce révélée correspond au type du ticket → gagnant
     realGain = t.gain;
   }
 
   res.json({
     id: t.id,
-    type: t.type,
-    revealed: t.revealed,
+    type: t.type,       // côté attendu
+    revealed: t.revealed, // ce qui est gratté
     gain: realGain,
     sold: t.sold,
     used: t.used,
     code: t.code
   });
 });
+
 
 // --------------------
 // Pages web

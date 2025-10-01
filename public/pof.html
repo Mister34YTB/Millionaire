@@ -101,11 +101,12 @@
       // Affiche le type officiel du ticket (PILE ou FACE en haut)
       document.getElementById("ticketType").innerText = data.type;
 
-      // La pièce montre aussi la mention tirée (PILE ou FACE)
-      document.getElementById("coinText").innerText = data.type;
+      // pièce affichée = revealed
+document.getElementById("coinText").innerText = data.revealed;
 
-      // Toujours afficher le gain distribué
-      document.getElementById("gainText").innerText = data.gain;
+// zone gain
+document.getElementById("gainText").innerText = data.gain;
+
 
       window.ticketData = data;
     }
