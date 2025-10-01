@@ -2,49 +2,108 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>Pile ou Face - Ticket</title>
+  <title>Ticket Pile ou Face</title>
   <style>
-    body { font-family: Arial, sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; background:#222; }
-    .ticket {
-      width: 300px; height: 400px; background: linear-gradient(135deg,#001f3f,#00aaff);
-      border-radius: 15px; color:#fff; text-align:center; position:relative; padding:20px;
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #001f3f, #0074D9);
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
     }
-    .logo { position:absolute; top:10px; left:10px; font-size:18px; font-weight:bold; }
+    .ticket {
+      width: 350px;
+      height: 450px;
+      background: #0a1a2f;
+      border: 5px solid #00bcd4;
+      border-radius: 15px;
+      text-align: center;
+      padding: 20px;
+      position: relative;
+      box-shadow: 0 0 15px rgba(0,0,0,0.6);
+    }
+    .logo {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 22px;
+      font-weight: bold;
+      color: #00d4ff;
+    }
     .coin {
-      width:120px; height:120px; margin:40px auto; border-radius:50%; background:gold;
-      display:flex; justify-content:center; align-items:center; font-size:28px; font-weight:bold; color:#222;
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #f0c419, #b8860b);
+      margin: 80px auto 20px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: bold;
+      color: #222;
+      box-shadow: inset -4px -4px 10px rgba(0,0,0,0.6), inset 4px 4px 10px rgba(255,255,255,0.5);
     }
     .gain {
-      margin-top:20px; background:#fff; color:#000; border-radius:10px; padding:10px; font-size:20px; font-weight:bold;
+      background: #fff;
+      color: #000;
+      margin: 20px auto;
+      padding: 15px;
+      width: 80%;
+      border-radius: 10px;
+      font-size: 20px;
+      font-weight: bold;
     }
-    .id { position:absolute; bottom:10px; right:10px; font-size:14px; }
+    .ticket-id {
+      position: absolute;
+      bottom: 10px;
+      right: 15px;
+      font-size: 14px;
+      color: #aaa;
+    }
   </style>
 </head>
 <body>
   <div class="ticket">
     <div class="logo">🎲 GDJ</div>
     <div class="coin" id="coin">?</div>
-    <div class="gain" id="gain">Zone gain</div>
-    <div class="id" id="ticketId">#0001</div>
+    <div class="gain" id="gain">Zone Gain</div>
+    <div class="ticket-id" id="ticketId">Ticket #???</div>
   </div>
 
   <script>
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get("id");
-    const code = params.get("code");
+    // Récupère id + code depuis l’URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const ticketId = urlParams.get("id");
+    const code = urlParams.get("code");
 
-    fetch(`/api/pof/ticket/${id}?code=${code}`)
-      .then(r=>r.json())
-      .then(data=>{
-        if(data.error){
-          document.getElementById("coin").innerText="X";
-          document.getElementById("gain").innerText=data.error;
+    if(ticketId) document.getElementById("ticketId").innerText = "Ticket #" + ticketId;
+
+    async function loadTicket() {
+      try {
+        const res = await fetch(`/api/pof/ticket/${ticketId}?code=${code}`);
+        const data = await res.json();
+
+        if(res.ok){
+          document.getElementById("coin").innerText = data.type;
+          if(data.gain === "0"){
+            document.getElementById("gain").innerText = "❌ PERDU";
+          } else {
+            document.getElementById("gain").innerText = "🏆 " + data.gain;
+          }
         } else {
-          document.getElementById("coin").innerText=data.type;
-          document.getElementById("gain").innerText=data.gain==="0" ? "Perdu" : "Gagné " + data.gain;
-          document.getElementById("ticketId").innerText="#"+data.id;
+          document.getElementById("coin").innerText = "X";
+          document.getElementById("gain").innerText = "Erreur: " + (data.error || "inconnue");
         }
-      });
+      } catch (e){
+        document.getElementById("gain").innerText = "❌ Erreur serveur";
+      }
+    }
+
+    loadTicket();
   </script>
 </body>
 </html>
