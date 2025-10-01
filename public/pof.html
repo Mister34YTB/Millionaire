@@ -30,10 +30,12 @@
       top: 10px;
       left: 10px;
       width: 80px;
+      height: auto;
+      z-index: 3;
     }
 
     .title {
-      margin-top: 60px;
+      margin-top: 40px;
       font-size: 36px;
       font-weight: bold;
     }
@@ -65,12 +67,13 @@
       z-index: 1;
     }
 
-    /* Zone grattage */
+    /* Zone grattable : uniquement sur la pièce et le gain */
     canvas {
       position: absolute;
       top: 0;
       left: 0;
       z-index: 2;
+      pointer-events: auto;
     }
 
     .footer {
@@ -84,13 +87,15 @@
 </head>
 <body>
   <div class="ticket">
-    <img src="https://imgur.com/a/FOvGqby.png" alt="GDJ" class="logo">
+    <!-- ✅ Ajout du logo -->
+    <img src="https://i.imgur.com/2dpxaTk.png" class="logo" alt="Logo GDJ">
+    
     <div class="title" id="type">PILE</div>
     <div class="coin" id="piece">PILE</div>
     <div class="gain" id="gain">5000€</div>
     <div class="footer" id="ticketId">Ticket #1234</div>
 
-    <!-- Canvas pour le grattage -->
+    <!-- Canvas pour grattage -->
     <canvas id="scratchCanvas" width="400" height="400"></canvas>
   </div>
 
@@ -99,7 +104,6 @@
     const ticketId = urlParams.get("id");
     const code = urlParams.get("code");
 
-    // Charger ticket depuis l’API
     async function loadTicket() {
       try {
         const res = await fetch(`/api/pof/ticket/${ticketId}?code=${code}`);
@@ -107,7 +111,7 @@
         if (res.ok) {
           document.getElementById("type").innerText = data.type;
           document.getElementById("piece").innerText = data.type;
-          document.getElementById("gain").innerText = data.gain;
+          document.getElementById("gain").innerText = (data.gain === "0") ? "PERDU" : data.gain;
           document.getElementById("ticketId").innerText = `Ticket #${data.id}`;
         } else {
           alert("Erreur : " + (data.error || "inconnue"));
@@ -119,24 +123,23 @@
 
     loadTicket();
 
-    // --- Effet grattage ---
+    // --- Effet grattage uniquement sur zones jaune ---
     const canvas = document.getElementById("scratchCanvas");
     const ctx = canvas.getContext("2d");
 
-    ctx.fillStyle = "#888";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.globalCompositeOperation = "destination-out";
+    function initMask() {
+      ctx.fillStyle = "#888";
+      // cercle sur la pièce
+      ctx.beginPath();
+      ctx.arc(200, 160, 80, 0, Math.PI * 2);
+      ctx.fill();
+      // rectangle zone gain
+      ctx.fillRect(110, 250, 180, 70);
+      ctx.globalCompositeOperation = "destination-out";
+    }
+    initMask();
 
     let scratching = false;
-
-    canvas.addEventListener("mousedown", () => scratching = true);
-    canvas.addEventListener("mouseup", () => scratching = false);
-    canvas.addEventListener("mousemove", scratch);
-    canvas.addEventListener("touchstart", () => scratching = true);
-    canvas.addEventListener("touchend", () => scratching = false);
-    canvas.addEventListener("touchmove", scratch);
-
     function scratch(e) {
       if (!scratching) return;
       e.preventDefault();
@@ -147,6 +150,13 @@
       ctx.arc(x, y, 20, 0, Math.PI * 2);
       ctx.fill();
     }
+
+    canvas.addEventListener("mousedown", () => scratching = true);
+    canvas.addEventListener("mouseup", () => scratching = false);
+    canvas.addEventListener("mousemove", scratch);
+    canvas.addEventListener("touchstart", () => scratching = true);
+    canvas.addEventListener("touchend", () => scratching = false);
+    canvas.addEventListener("touchmove", scratch);
   </script>
 </body>
 </html>
