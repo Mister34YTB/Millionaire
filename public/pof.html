@@ -2,108 +2,148 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>Ticket Pile ou Face</title>
+  <title>🎟️ Ticket Pile ou Face</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #001f3f, #0074D9);
-      color: white;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
+      background: linear-gradient(135deg, #0a1f44, #00bcd4);
       margin: 0;
     }
     .ticket {
       width: 350px;
-      height: 450px;
-      background: #0a1a2f;
-      border: 5px solid #00bcd4;
-      border-radius: 15px;
-      text-align: center;
-      padding: 20px;
+      height: 500px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+      padding: 15px;
       position: relative;
-      box-shadow: 0 0 15px rgba(0,0,0,0.6);
+      text-align: center;
     }
     .logo {
       position: absolute;
       top: 10px;
       left: 10px;
-      font-size: 22px;
-      font-weight: bold;
-      color: #00d4ff;
-    }
-    .coin {
-      width: 150px;
-      height: 150px;
-      border-radius: 50%;
-      background: radial-gradient(circle, #f0c419, #b8860b);
-      margin: 80px auto 20px auto;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
-      font-weight: bold;
-      color: #222;
-      box-shadow: inset -4px -4px 10px rgba(0,0,0,0.6), inset 4px 4px 10px rgba(255,255,255,0.5);
-    }
-    .gain {
-      background: #fff;
-      color: #000;
-      margin: 20px auto;
-      padding: 15px;
-      width: 80%;
-      border-radius: 10px;
       font-size: 20px;
       font-weight: bold;
+      color: #003399;
     }
-    .ticket-id {
+    .coin {
+      margin-top: 60px;
+    }
+    .zone {
+      margin-top: 30px;
+    }
+    canvas {
+      border-radius: 10px;
+      cursor: grab;
+    }
+    .numero {
       position: absolute;
       bottom: 10px;
       right: 15px;
       font-size: 14px;
-      color: #aaa;
+      color: #444;
     }
   </style>
 </head>
 <body>
   <div class="ticket">
-    <div class="logo">🎲 GDJ</div>
-    <div class="coin" id="coin">?</div>
-    <div class="gain" id="gain">Zone Gain</div>
-    <div class="ticket-id" id="ticketId">Ticket #???</div>
+    <div class="logo">🎰 GDJ</div>
+
+    <h2>PILE ou FACE</h2>
+    <p>Gratte la pièce et la zone gain 👇</p>
+
+    <!-- Pièce -->
+    <div class="coin">
+      <canvas id="coin" width="200" height="200"></canvas>
+      <div id="resultCoin" style="display:none;font-size:26px;font-weight:bold;"></div>
+    </div>
+
+    <!-- Zone gain -->
+    <div class="zone">
+      <canvas id="gain" width="280" height="80"></canvas>
+      <div id="resultGain" style="display:none;font-size:22px;font-weight:bold;color:green;"></div>
+    </div>
+
+    <div class="numero">Ticket #<span id="ticketId"></span></div>
   </div>
 
   <script>
-    // Récupère id + code depuis l’URL
+    // Récupère infos URL (ex: /pof?id=1234&code=5678)
     const urlParams = new URLSearchParams(window.location.search);
     const ticketId = urlParams.get("id");
     const code = urlParams.get("code");
+    document.getElementById("ticketId").innerText = ticketId;
 
-    if(ticketId) document.getElementById("ticketId").innerText = "Ticket #" + ticketId;
-
-    async function loadTicket() {
-      try {
-        const res = await fetch(`/api/pof/ticket/${ticketId}?code=${code}`);
-        const data = await res.json();
-
-        if(res.ok){
-          document.getElementById("coin").innerText = data.type;
-          if(data.gain === "0"){
-            document.getElementById("gain").innerText = "❌ PERDU";
-          } else {
-            document.getElementById("gain").innerText = "🏆 " + data.gain;
-          }
-        } else {
-          document.getElementById("coin").innerText = "X";
-          document.getElementById("gain").innerText = "Erreur: " + (data.error || "inconnue");
-        }
-      } catch (e){
-        document.getElementById("gain").innerText = "❌ Erreur serveur";
+    async function fetchTicket() {
+      const res = await fetch(`/api/pof/ticket/${ticketId}?code=${code}`);
+      if(!res.ok){
+        document.getElementById("resultCoin").innerText = "❌ Ticket invalide";
+        document.getElementById("resultCoin").style.display = "block";
+        return null;
       }
+      return await res.json();
     }
 
-    loadTicket();
+    function scratchCanvas(canvas, revealCb) {
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#999";
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+
+      let isDrawing = false;
+      canvas.addEventListener("mousedown", () => isDrawing = true);
+      canvas.addEventListener("mouseup", () => isDrawing = false);
+      canvas.addEventListener("mousemove", e => scratch(e));
+
+      canvas.addEventListener("touchstart", () => isDrawing = true);
+      canvas.addEventListener("touchend", () => isDrawing = false);
+      canvas.addEventListener("touchmove", e => scratch(e.touches[0]));
+
+      function scratch(e){
+        if(!isDrawing) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        ctx.clearRect(x-15, y-15, 30, 30);
+      }
+
+      function checkReveal() {
+        const img = ctx.getImageData(0,0,canvas.width,canvas.height);
+        let total = img.data.length / 4;
+        let transparent = 0;
+        for(let i=3;i<img.data.length;i+=4){
+          if(img.data[i]===0) transparent++;
+        }
+        if(transparent/total > 0.6){
+          revealCb();
+          canvas.style.display = "none";
+        }
+      }
+      setInterval(checkReveal, 1000);
+    }
+
+    async function init(){
+      const data = await fetchTicket();
+      if(!data) return;
+
+      // Grattage pièce
+      scratchCanvas(document.getElementById("coin"), () => {
+        document.getElementById("resultCoin").innerText = data.type;
+        document.getElementById("resultCoin").style.display = "block";
+      });
+
+      // Grattage gain
+      scratchCanvas(document.getElementById("gain"), () => {
+        document.getElementById("resultGain").innerText = data.gain === "0" ? "❌ Perdu" : "🏆 " + data.gain;
+        document.getElementById("resultGain").style.display = "block";
+      });
+    }
+
+    init();
   </script>
 </body>
 </html>
