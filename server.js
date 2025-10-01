@@ -38,9 +38,10 @@ const POF_DISTRIBUTION = [
   { gain: "15€", count: 150 },
   { gain: "5€", count: 300 },
   { gain: "2€", count: 400 },
-  { gain: "1€", count: 1000 },
-  { gain: "0", count: 3042 } // perdants
+  { gain: "1€", count: 1000 }
+  // ⚠️ plus de "0" ici !
 ];
+
 
 let tickets = [];
 let pofTickets = [];
