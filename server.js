@@ -12,7 +12,7 @@ app.use(cors());
 app.use(express.static("public")); // sert les fichiers HTML/CSS/JS
 
 // --------------------
-// Gestion des tickets
+// Gestion des tickets Millionaire
 // --------------------
 const TICKET_FILE = "tickets.json";
 
@@ -29,7 +29,7 @@ const distribution = [
 ];
 
 // --------------------
-// Distribution Pile ou Face
+// Gestion Pile ou Face
 // --------------------
 const POF_DISTRIBUTION = [
   { gain: "5000€", count: 3 },
@@ -46,41 +46,44 @@ let tickets = [];
 let pofTickets = [];
 
 // --------------------
-// Fonctions Tickets
+// Fonctions
 // --------------------
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
 function regenerateTickets() {
   let pool = [];
   distribution.forEach(d => {
-    for (let i = 0; i < d.count; i++) {
-      pool.push(d.gain);
-    }
+    for (let i = 0; i < d.count; i++) pool.push(d.gain);
   });
   shuffle(pool);
 
   tickets = pool.map((gain, index) => ({
-    id: String(index + 1).padStart(3, "0"), // 001 → 999
-    gain: gain,
+    id: String(index + 1).padStart(3, "0"),
+    gain,
     sold: false,
     used: false,
     code: null
   }));
 
-  saveTickets();
+  fs.writeFileSync(TICKET_FILE, JSON.stringify(tickets, null, 2));
 }
 
 function regeneratePOFTickets() {
   let pool = [];
   POF_DISTRIBUTION.forEach(d => {
-    for (let i = 0; i < d.count; i++) {
-      pool.push(d.gain);
-    }
+    for (let i = 0; i < d.count; i++) pool.push(d.gain);
   });
   shuffle(pool);
 
   pofTickets = pool.map((gain, index) => ({
-    id: String(index + 1).padStart(4, "0"), // 0001 → 5000
+    id: String(index + 1).padStart(4, "0"),
     type: Math.random() < 0.5 ? "PILE" : "FACE",
-    gain: gain,
+    gain,
     sold: false,
     used: false,
     code: null
@@ -103,19 +106,8 @@ function loadTickets() {
   }
 }
 
-function saveTickets() {
-  fs.writeFileSync(TICKET_FILE, JSON.stringify(tickets, null, 2));
-}
-
-function shuffle(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-}
-
 // --------------------
-// API Tickets Millionaire
+// API Millionaire
 // --------------------
 app.get("/api/buyTicket", (req, res) => {
   const count = parseInt(req.query.count) || 1;
@@ -136,7 +128,7 @@ app.get("/api/buyTicket", (req, res) => {
     bought.push({ id: t.id, code: t.code });
   }
 
-  saveTickets();
+  fs.writeFileSync(TICKET_FILE, JSON.stringify(tickets, null, 2));
   res.json({ tickets: bought });
 });
 
@@ -144,14 +136,12 @@ app.get("/api/ticket/:id", (req, res) => {
   const { code } = req.query;
   const t = tickets.find(tt => tt.id === req.params.id);
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
-  if (!code || t.code !== code) {
-    return res.status(403).json({ error: "Code invalide" });
-  }
+  if (!code || t.code !== code) return res.status(403).json({ error: "Code invalide" });
   res.json(t);
 });
 
 // --------------------
-// API Tickets Pile ou Face
+// API Pile ou Face
 // --------------------
 app.get("/api/buyPOF", (req, res) => {
   const count = parseInt(req.query.count) || 1;
@@ -180,9 +170,7 @@ app.get("/api/pof/ticket/:id", (req, res) => {
   const { code } = req.query;
   const t = pofTickets.find(tt => tt.id === req.params.id);
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
-  if (!code || t.code !== code) {
-    return res.status(403).json({ error: "Code invalide" });
-  }
+  if (!code || t.code !== code) return res.status(403).json({ error: "Code invalide" });
   res.json(t);
 });
 
@@ -206,13 +194,24 @@ app.get("/", (req, res) => {
 });
 
 // --------------------
-// Admin - reset tickets
+// Admin
 // --------------------
+app.get("/api/admin/checkTicket/:id", (req, res) => {
+  const t = tickets.find(tt => tt.id === req.params.id);
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+  res.json(t);
+});
+
+app.get("/api/admin/checkPOF/:id", (req, res) => {
+  const t = pofTickets.find(tt => tt.id === req.params.id);
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+  res.json(t);
+});
+
 app.post("/api/admin/reset", (req, res) => {
   regenerateTickets();
   regeneratePOFTickets();
-  saveTickets();
-  res.json({ success: true, message: "🎟️ Inventaire des tickets réinitialisé." });
+  res.json({ success: true, message: "🎟️ Inventaire réinitialisé." });
 });
 
 // --------------------
