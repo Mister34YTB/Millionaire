@@ -15,57 +15,55 @@
     .ticket {
       position: relative;
       width: 500px;
-      height: 600px;
-      background: linear-gradient(to bottom, #1e3a8a, #06b6d4);
+      height: 500px;
+      border-radius: 50%;
+      background: linear-gradient(to bottom, #2563eb, #22d3ee);
       border: 8px solid gold;
-      border-radius: 20px;
       text-align: center;
       overflow: hidden;
     }
     .logo {
       position: absolute;
-      top: 15px;
-      left: 15px;
+      top: 10px;
+      left: 10px;
       width: 80px;
     }
     .title {
-      margin-top: 30px;
-      font-size: 40px;
+      margin-top: 40px;
+      font-size: 36px;
       font-weight: bold;
-      color: white;
-      text-shadow: 2px 2px 4px black;
+      color: black;
     }
     .coin {
       position: absolute;
       top: 150px;
       left: 50%;
       transform: translateX(-50%);
-      width: 220px;
-      height: 220px;
+      width: 200px;
+      height: 200px;
       border-radius: 50%;
       background: gold;
-      border: 6px solid black;
+      border: 5px solid black;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 50px;
+      font-size: 40px;
       font-weight: bold;
       z-index: 1;
     }
     .gain {
       position: absolute;
-      bottom: 100px;
+      bottom: 80px;
       left: 50%;
       transform: translateX(-50%);
-      width: 280px;
-      height: 80px;
+      width: 250px;
+      height: 70px;
       background: gold;
-      border: 5px solid black;
-      border-radius: 10px;
+      border: 4px solid black;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 32px;
+      font-size: 28px;
       font-weight: bold;
       z-index: 1;
     }
@@ -83,10 +81,11 @@
     <div class="title" id="ticketType">PILE</div>
     <div class="coin" id="coinText">FACE</div>
     <div class="gain" id="gainText">5000€</div>
-    <canvas id="scratch" width="500" height="600"></canvas>
+    <canvas id="scratch" width="500" height="500"></canvas>
   </div>
 
   <script>
+    // Récupération des paramètres URL
     const urlParams = new URLSearchParams(window.location.search);
     const id = urlParams.get("id");
     const code = urlParams.get("code");
@@ -99,32 +98,25 @@
       }
       const data = await res.json();
 
-      // Affiche le type officiel du ticket (PILE/FACE attendu)
+      // Affiche le type officiel du ticket (PILE ou FACE en haut)
       document.getElementById("ticketType").innerText = data.type;
 
-      // Affiche la face révélée sur la pièce
+      // La pièce montre aussi la mention tirée (PILE ou FACE)
       document.getElementById("coinText").innerText = data.type;
 
-      // Affiche le gain ou PERDU
-      if (data.gain === "0") {
-        document.getElementById("gainText").innerText = "PERDU";
-      } else {
-document.getElementById("gainText").innerText = data.gain;
-      }
+      // Toujours afficher le gain distribué
+      document.getElementById("gainText").innerText = data.gain;
 
       window.ticketData = data;
     }
 
     loadTicket();
 
-    // --- Grattage ---
+    // --- Grattage avec canvas ---
     const canvas = document.getElementById("scratch");
     const ctx = canvas.getContext("2d");
-
-    // on ne gratte que sur la pièce + zone gain
-    ctx.fillStyle = "silver";
-    ctx.fillRect(140, 150, 220, 220); // zone pièce
-    ctx.fillRect(110, 420, 280, 80); // zone gain
+    ctx.fillStyle = "gray";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     let scratching = false;
     canvas.addEventListener("mousedown", () => scratching = true);
