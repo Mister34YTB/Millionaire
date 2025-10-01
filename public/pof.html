@@ -49,6 +49,7 @@
       justify-content: center;
       font-size: 40px;
       font-weight: bold;
+      z-index: 1;
     }
     .gain {
       position: absolute;
@@ -64,11 +65,13 @@
       justify-content: center;
       font-size: 28px;
       font-weight: bold;
+      z-index: 1;
     }
     canvas {
       position: absolute;
       top: 0;
       left: 0;
+      z-index: 2;
     }
   </style>
 </head>
@@ -95,12 +98,15 @@
       }
       const data = await res.json();
 
-      // Remplir le ticket
+      // Affichage du type officiel du ticket (PILE ou FACE en haut)
       document.getElementById("ticketType").innerText = data.type;
-      document.getElementById("coinText").innerText = (Math.random() < 0.5 ? "PILE" : "FACE");
+
+      // La pièce montre aussi la mention réelle (PILE/FACE)
+      document.getElementById("coinText").innerText = data.type;
+
+      // Gain affiché
       document.getElementById("gainText").innerText = data.gain === "0" ? "PERDU" : data.gain;
 
-      // Stocker logique de vérification
       window.ticketData = data;
     }
 
