@@ -129,11 +129,11 @@
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     let scratching = false;
-    let scratchedPixels = 0;
-    const totalPixels = canvas.width * canvas.height;
-
     canvas.addEventListener("mousedown", () => scratching = true);
-    canvas.addEventListener("mouseup", () => scratching = false);
+    canvas.addEventListener("mouseup", () => {
+      scratching = false;
+      checkScratchProgress();
+    });
     canvas.addEventListener("mousemove", scratch);
 
     function scratch(e) {
@@ -146,9 +146,19 @@
       ctx.beginPath();
       ctx.arc(x, y, 25, 0, 2 * Math.PI);
       ctx.fill();
+    }
 
-      scratchedPixels += Math.PI * 25 * 25;
-      if (scratchedPixels > totalPixels * 0.5) {
+    function checkScratchProgress() {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      let total = imageData.data.length / 4;
+      let cleared = 0;
+
+      for (let i = 0; i < imageData.data.length; i += 4) {
+        if (imageData.data[i + 3] === 0) cleared++;
+      }
+
+      const percent = cleared / total;
+      if (percent > 0.7) {
         markUsed();
       }
     }
