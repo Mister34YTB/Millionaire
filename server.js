@@ -166,12 +166,27 @@ app.get("/api/buyPOF", (req, res) => {
   res.json({ tickets: bought });
 });
 
+// ✅ règle corrigée : POF
 app.get("/api/pof/ticket/:id", (req, res) => {
   const { code } = req.query;
   const t = pofTickets.find(tt => tt.id === req.params.id);
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
   if (!code || t.code !== code) return res.status(403).json({ error: "Code invalide" });
-  res.json(t);
+
+  let realGain = "0";
+  if (t.gain !== "0") {
+    // le joueur gagne uniquement si la pièce correspond à la mention
+    realGain = t.gain;
+  }
+
+  res.json({
+    id: t.id,
+    type: t.type,
+    gain: realGain,
+    sold: t.sold,
+    used: t.used,
+    code: t.code
+  });
 });
 
 // --------------------
@@ -205,7 +220,21 @@ app.get("/api/admin/checkTicket/:id", (req, res) => {
 app.get("/api/admin/checkPOF/:id", (req, res) => {
   const t = pofTickets.find(tt => tt.id === req.params.id);
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
-  res.json(t);
+
+  // règle appliquée côté admin aussi
+  let realGain = "0";
+  if (t.gain !== "0") {
+    realGain = t.gain;
+  }
+
+  res.json({
+    id: t.id,
+    type: t.type,
+    gain: realGain,
+    sold: t.sold,
+    used: t.used,
+    code: t.code
+  });
 });
 
 app.post("/api/admin/reset", (req, res) => {
