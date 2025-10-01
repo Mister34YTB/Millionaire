@@ -12,14 +12,10 @@ app.use(cors());
 app.use(express.static("public")); // sert les fichiers HTML/CSS/JS
 
 // --------------------
-// Fichiers
+// Gestion des tickets
 // --------------------
 const TICKET_FILE = "tickets.json";
-const POF_FILE = "tickets_pof.json";
 
-// --------------------
-// Distribution Millionaire
-// --------------------
 const distribution = [
   { gain: "⭐", count: 5 },
   { gain: "50K€", count: 2 },
@@ -46,74 +42,39 @@ const POF_DISTRIBUTION = [
   { gain: "0", count: 3042 } // perdants
 ];
 
-// --------------------
-// Variables
-// --------------------
 let tickets = [];
 let pofTickets = [];
 
 // --------------------
-// Utils
-// --------------------
-function shuffle(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-}
-
-// --------------------
-// Millionaire
+// Fonctions Tickets
 // --------------------
 function regenerateTickets() {
   let pool = [];
   distribution.forEach(d => {
-    for (let i = 0; i < d.count; i++) pool.push(d.gain);
+    for (let i = 0; i < d.count; i++) {
+      pool.push(d.gain);
+    }
   });
-
   shuffle(pool);
 
-  tickets = pool.map((gain, index) => {
-    let ticketId;
-    if (index + 1 === 1000) {
-      ticketId = "000"; // le dernier = 000
-    } else {
-      ticketId = String(index + 1).padStart(3, "0"); // 001 → 999
-    }
-
-    return {
-      id: ticketId,
-      gain: gain,
-      sold: false,
-      used: false,
-      code: null
-    };
-  });
+  tickets = pool.map((gain, index) => ({
+    id: String(index + 1).padStart(3, "0"), // 001 → 999
+    gain: gain,
+    sold: false,
+    used: false,
+    code: null
+  }));
 
   saveTickets();
 }
 
-function loadTickets() {
-  if (fs.existsSync(TICKET_FILE)) {
-    tickets = JSON.parse(fs.readFileSync(TICKET_FILE, "utf8"));
-  } else {
-    regenerateTickets();
-  }
-}
-
-function saveTickets() {
-  fs.writeFileSync(TICKET_FILE, JSON.stringify(tickets, null, 2));
-}
-
-// --------------------
-// Pile ou Face
-// --------------------
 function regeneratePOFTickets() {
   let pool = [];
   POF_DISTRIBUTION.forEach(d => {
-    for (let i = 0; i < d.count; i++) pool.push(d.gain);
+    for (let i = 0; i < d.count; i++) {
+      pool.push(d.gain);
+    }
   });
-
   shuffle(pool);
 
   pofTickets = pool.map((gain, index) => ({
@@ -125,28 +86,41 @@ function regeneratePOFTickets() {
     code: null
   }));
 
-  savePOFTickets();
+  fs.writeFileSync("tickets_pof.json", JSON.stringify(pofTickets, null, 2));
 }
 
-function loadPOFTickets() {
-  if (fs.existsSync(POF_FILE)) {
-    pofTickets = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
+function loadTickets() {
+  if (fs.existsSync(TICKET_FILE)) {
+    tickets = JSON.parse(fs.readFileSync(TICKET_FILE, "utf8"));
+  } else {
+    regenerateTickets();
+  }
+
+  if (fs.existsSync("tickets_pof.json")) {
+    pofTickets = JSON.parse(fs.readFileSync("tickets_pof.json", "utf8"));
   } else {
     regeneratePOFTickets();
   }
 }
 
-function savePOFTickets() {
-  fs.writeFileSync(POF_FILE, JSON.stringify(pofTickets, null, 2));
+function saveTickets() {
+  fs.writeFileSync(TICKET_FILE, JSON.stringify(tickets, null, 2));
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
 }
 
 // --------------------
-// API Millionaire
+// API Tickets Millionaire
 // --------------------
 app.get("/api/buyTicket", (req, res) => {
   const count = parseInt(req.query.count) || 1;
-
   let available = tickets.filter(t => !t.sold);
+
   if (available.length < count) {
     regenerateTickets();
     available = tickets.filter(t => !t.sold);
@@ -155,7 +129,6 @@ app.get("/api/buyTicket", (req, res) => {
   const bought = [];
   for (let i = 0; i < count; i++) {
     if (!available.length) break;
-
     const idx = Math.floor(Math.random() * available.length);
     const t = available.splice(idx, 1)[0];
     t.sold = true;
@@ -171,33 +144,14 @@ app.get("/api/ticket/:id", (req, res) => {
   const { code } = req.query;
   const t = tickets.find(tt => tt.id === req.params.id);
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
-  if (!code || t.code !== code) return res.status(403).json({ error: "Code invalide" });
+  if (!code || t.code !== code) {
+    return res.status(403).json({ error: "Code invalide" });
+  }
   res.json(t);
-});
-
-app.post("/api/useTicket/:id", (req, res) => {
-  const { code } = req.body;
-  const t = tickets.find(tt => tt.id === req.params.id);
-  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
-  if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
-  t.used = true;
-  saveTickets();
-  res.json({ success: true, message: "Ticket marqué comme utilisé" });
-});
-
-app.get("/api/admin/checkTicket/:id", (req, res) => {
-  const t = tickets.find(tt => tt.id === req.params.id);
-  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
-  res.json(t);
-});
-
-app.post("/api/admin/reset", (req, res) => {
-  regenerateTickets();
-  res.json({ success: true, message: "🎟️ Inventaire Millionaire réinitialisé." });
 });
 
 // --------------------
-// API Pile ou Face
+// API Tickets Pile ou Face
 // --------------------
 app.get("/api/buyPOF", (req, res) => {
   const count = parseInt(req.query.count) || 1;
@@ -218,7 +172,7 @@ app.get("/api/buyPOF", (req, res) => {
     bought.push({ id: t.id, code: t.code, type: t.type });
   }
 
-  savePOFTickets();
+  fs.writeFileSync("tickets_pof.json", JSON.stringify(pofTickets, null, 2));
   res.json({ tickets: bought });
 });
 
@@ -226,19 +180,10 @@ app.get("/api/pof/ticket/:id", (req, res) => {
   const { code } = req.query;
   const t = pofTickets.find(tt => tt.id === req.params.id);
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
-  if (!code || t.code !== code) return res.status(403).json({ error: "Code invalide" });
+  if (!code || t.code !== code) {
+    return res.status(403).json({ error: "Code invalide" });
+  }
   res.json(t);
-});
-
-app.get("/api/admin/checkPOF/:id", (req, res) => {
-  const t = pofTickets.find(tt => tt.id === req.params.id);
-  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
-  res.json(t);
-});
-
-app.post("/api/admin/resetPof", (req, res) => {
-  regeneratePOFTickets();
-  res.json({ success: true, message: "♻️ Inventaire Pile ou Face réinitialisé." });
 });
 
 // --------------------
@@ -246,6 +191,10 @@ app.post("/api/admin/resetPof", (req, res) => {
 // --------------------
 app.get("/ticket", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "ticket.html"));
+});
+
+app.get("/pof", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "pof.html"));
 });
 
 app.get("/admin", (req, res) => {
@@ -257,11 +206,17 @@ app.get("/", (req, res) => {
 });
 
 // --------------------
-// Lancement
+// Admin - reset tickets
+// --------------------
+app.post("/api/admin/reset", (req, res) => {
+  regenerateTickets();
+  regeneratePOFTickets();
+  saveTickets();
+  res.json({ success: true, message: "🎟️ Inventaire des tickets réinitialisé." });
+});
+
 // --------------------
 loadTickets();
-loadPOFTickets();
-
 app.listen(PORT, () =>
   console.log(`✅ Serveur lancé sur http://localhost:${PORT}`)
 );
