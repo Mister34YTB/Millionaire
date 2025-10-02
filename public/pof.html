@@ -115,7 +115,7 @@
       return POF_DISTRIBUTION[i].gain;
     }
 
-    async function loadTicket() {
+   async function loadTicket() {
   const res = await fetch(`/api/pof/ticket/${id}?code=${code}`);
   if (!res.ok) {
     document.body.innerHTML = "<h1>❌ Ticket introuvable ou code invalide.</h1>";
@@ -128,39 +128,75 @@
     return;
   }
 
-  // 👉 Marquer comme utilisé immédiatement après affichage
+  // masquer le texte pour éviter le spoil
+  document.getElementById("coinText").style.color = "transparent";
+  document.getElementById("gainText").style.color = "transparent";
+
+  document.getElementById("ticketType").innerText = data.type;
+  document.getElementById("coinText").innerText = data.revealed || data.type;
+  document.getElementById("gainText").innerText = data.gain === "PERDU" ? getFakePrize() : data.gain;
+  document.getElementById("ticketIdText").innerText = `#${data.id}`;
+
+  const container = document.getElementById("ticketContainer");
+
+  // attendre un cycle de rendu pour que la position soit correcte
+  await new Promise(requestAnimationFrame);
+
+  initScratchOverElement(document.getElementById("scratchCoin"), document.getElementById("coinText"), container);
+  initScratchOverElement(document.getElementById("scratchGain"), document.getElementById("gainText"), container);
+
+  // une fois les zones dessinées, on remet la couleur
+  document.getElementById("coinText").style.color = "black";
+  document.getElementById("gainText").style.color = "black";
+
+  // marquer utilisé
   await fetch(`/api/pof/use/${id}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code })
   });
+}
 
-  document.getElementById("ticketType").innerText = data.type;
-  document.getElementById("coinText").innerText = data.revealed || data.type;
+function initScratchOverElement(canvas, target, container) {
+  const rect = target.getBoundingClientRect();
+  const parentRect = container.getBoundingClientRect();
+  const w = rect.width, h = rect.height;
+  const x = rect.left - parentRect.left, y = rect.top - parentRect.top;
 
-  if (data.gain === "PERDU") {
-    document.getElementById("gainText").innerText = getFakePrize();
-  } else {
-    document.getElementById("gainText").innerText = data.gain;
-  }
+  canvas.width = w;
+  canvas.height = h;
+  canvas.style.left = x + "px";
+  canvas.style.top = y + "px";
+  canvas.style.width = w + "px";
+  canvas.style.height = h + "px";
+  canvas.style.borderRadius = getComputedStyle(target).borderRadius;
 
-  document.getElementById("ticketIdText").innerText = `#${data.id}`;
-  window.ticketData = data;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "gray";
+  ctx.fillRect(0, 0, w, h);
 
-  const container = document.getElementById("ticketContainer");
-  initScratchOverElement(document.getElementById("scratchCoin"), document.getElementById("coinText"), container);
-  initScratchOverElement(document.getElementById("scratchGain"), document.getElementById("gainText"), container);
+  let scratching = false;
+  canvas.addEventListener("mousedown", () => scratching = true);
+  canvas.addEventListener("mouseup", () => scratching = false);
+  canvas.addEventListener("mouseleave", () => scratching = false);
+  canvas.addEventListener("mousemove", e => {
+    if (!scratching) return;
+    const r = canvas.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.beginPath();
+    ctx.arc(x, y, 20, 0, 2 * Math.PI);
+    ctx.fill();
+  });
 }
 
 
-    function initScratchOverElement(canvas, target, container) {
-      const rect = target.getBoundingClientRect();
-      const parentRect = container.getBoundingClientRect();
 
-      const w = rect.width;
-      const h = rect.height;
-      const x = rect.left - parentRect.left;
-      const y = rect.top - parentRect.top;
+    function initScratchOverElement(canvas, target, container) {
+     const rect = target.getBoundingClientRect();
+const parentRect = container.getBoundingClientRect();
+const x = rect.left - parentRect.left;
+const y = rect.top - parentRect.top;
 
       canvas.width = w;
       canvas.height = h;
