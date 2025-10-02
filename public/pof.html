@@ -156,46 +156,54 @@
       });
     }
 
-    async function placeScratchOverElement(canvas, target, container) {
-      // attendre un cycle de rendu pour que les positions CSS soient correctes
-      await new Promise(requestAnimationFrame);
+  async function placeScratchOverElement(canvas, target, container) {
+  await new Promise(requestAnimationFrame);
 
-      const rect = target.getBoundingClientRect();
-      const parentRect = container.getBoundingClientRect();
+  const rect = target.getBoundingClientRect();
+  const parentRect = container.getBoundingClientRect();
 
-      const w = rect.width;
-      const h = rect.height;
-      const x = rect.left - parentRect.left;
-      const y = rect.top - parentRect.top;
+  let w = rect.width;
+  let h = rect.height;
+  let x = rect.left - parentRect.left;
+  let y = rect.top - parentRect.top;
 
-      canvas.width = w;
-      canvas.height = h;
-      canvas.style.width = w + "px";
-      canvas.style.height = h + "px";
-      canvas.style.left = x + "px";
-      canvas.style.top = y + "px";
-      canvas.style.position = "absolute";
-      canvas.style.borderRadius = getComputedStyle(target).borderRadius;
+  // ✅ ajuster selon la classe
+  if (target.classList.contains("coin")) {
+    w += 10; h += 10; x -= 5; y -= 5;
+  }
+  if (target.classList.contains("gain")) {
+    w += 8; h += 8; x -= 4; y -= 4;
+  }
 
-      const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "gray";
-      ctx.fillRect(0, 0, w, h);
+  canvas.width = w;
+  canvas.height = h;
+  canvas.style.width = w + "px";
+  canvas.style.height = h + "px";
+  canvas.style.left = x + "px";
+  canvas.style.top = y + "px";
+  canvas.style.position = "absolute";
+  canvas.style.borderRadius = getComputedStyle(target).borderRadius;
 
-      let scratching = false;
-      canvas.addEventListener("mousedown", () => scratching = true);
-      canvas.addEventListener("mouseup", () => scratching = false);
-      canvas.addEventListener("mouseleave", () => scratching = false);
-      canvas.addEventListener("mousemove", e => {
-        if (!scratching) return;
-        const r = canvas.getBoundingClientRect();
-        const x = e.clientX - r.left;
-        const y = e.clientY - r.top;
-        ctx.globalCompositeOperation = "destination-out";
-        ctx.beginPath();
-        ctx.arc(x, y, 20, 0, 2 * Math.PI);
-        ctx.fill();
-      });
-    }
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "gray";
+  ctx.fillRect(0, 0, w, h);
+
+  let scratching = false;
+  canvas.addEventListener("mousedown", () => scratching = true);
+  canvas.addEventListener("mouseup", () => scratching = false);
+  canvas.addEventListener("mouseleave", () => scratching = false);
+  canvas.addEventListener("mousemove", e => {
+    if (!scratching) return;
+    const r = canvas.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.beginPath();
+    ctx.arc(x, y, 20, 0, 2 * Math.PI);
+    ctx.fill();
+  });
+}
+
 
     loadTicket();
   </script>
