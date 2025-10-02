@@ -77,17 +77,7 @@
     canvas {
       position: absolute;
       z-index: 2;
-    }
-    #scratchCoin {
-      top: 140px;
-      left: 50%;
-      transform: translateX(-50%);
-      border-radius: 50%;
-    }
-    #scratchGain {
-      bottom: 120px;
-      left: 50%;
-      transform: translateX(-50%);
+      cursor: pointer;
     }
   </style>
 </head>
@@ -99,16 +89,32 @@
     <div class="gain" id="gainText">???</div>
     <div class="ticket-id" id="ticketIdText">#0001</div>
 
-    <!-- Zone grattable : pièce -->
-    <canvas id="scratchCoin" width="200" height="200"></canvas>
-    <!-- Zone grattable : gain -->
-    <canvas id="scratchGain" width="250" height="70"></canvas>
+    <!-- Zones de grattage -->
+    <canvas id="scratchCoin"></canvas>
+    <canvas id="scratchGain"></canvas>
   </div>
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const id = urlParams.get("id");
     const code = urlParams.get("code");
+
+    // Tableau des lots (faux gains si perdu)
+    const POF_DISTRIBUTION = [
+      { gain: "5000€", count: 3 },
+      { gain: "200€", count: 5 },
+      { gain: "50€", count: 100 },
+      { gain: "15€", count: 150 },
+      { gain: "5€", count: 300 },
+      { gain: "2€", count: 400 },
+      { gain: "1€", count: 1000 }
+    ];
+
+    // Tire un faux lot aléatoire
+    function getFakePrize() {
+      const i = Math.floor(Math.random() * POF_DISTRIBUTION.length);
+      return POF_DISTRIBUTION[i].gain;
+    }
 
     async function loadTicket() {
       const res = await fetch(`/api/pof/ticket/${id}?code=${code}`);
@@ -125,28 +131,53 @@
 
       document.getElementById("ticketType").innerText = data.type;
       document.getElementById("coinText").innerText = data.revealed || data.type;
-      document.getElementById("gainText").innerText = data.gain;
-      document.getElementById("ticketIdText").innerText = `#${data.id}`;
 
+      if (data.gain === "PERDU") {
+        document.getElementById("gainText").innerText = getFakePrize();
+      } else {
+        document.getElementById("gainText").innerText = data.gain;
+      }
+
+      document.getElementById("ticketIdText").innerText = `#${data.id}`;
       window.ticketData = data;
+
+      // Initialiser les zones de grattage une fois les données chargées
+      initScratchOverElement(
+        document.getElementById("scratchCoin"),
+        document.getElementById("coinText")
+      );
+      initScratchOverElement(
+        document.getElementById("scratchGain"),
+        document.getElementById("gainText")
+      );
     }
 
-    loadTicket();
+    function initScratchOverElement(canvas, target) {
+      const rect = target.getBoundingClientRect();
 
-    function initScratch(canvas) {
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      canvas.style.width = rect.width + "px";
+      canvas.style.height = rect.height + "px";
+      canvas.style.top = target.offsetTop + "px";
+      canvas.style.left = target.offsetLeft + "px";
+      canvas.style.borderRadius = getComputedStyle(target).borderRadius;
+
       const ctx = canvas.getContext("2d");
       ctx.fillStyle = "gray";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       let scratching = false;
+
       canvas.addEventListener("mousedown", () => scratching = true);
       canvas.addEventListener("mouseup", () => scratching = false);
+      canvas.addEventListener("mouseleave", () => scratching = false);
+
       canvas.addEventListener("mousemove", e => {
         if (!scratching) return;
-        const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-
+        const r = canvas.getBoundingClientRect();
+        const x = e.clientX - r.left;
+        const y = e.clientY - r.top;
         ctx.globalCompositeOperation = "destination-out";
         ctx.beginPath();
         ctx.arc(x, y, 20, 0, 2 * Math.PI);
@@ -154,8 +185,7 @@
       });
     }
 
-    initScratch(document.getElementById("scratchCoin"));
-    initScratch(document.getElementById("scratchGain"));
+    loadTicket();
   </script>
 </body>
 </html>
