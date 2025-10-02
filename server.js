@@ -40,7 +40,6 @@ const POF_DISTRIBUTION = [
   { gain: "5€", count: 300 },
   { gain: "2€", count: 400 },
   { gain: "1€", count: 1000 }
-  // ⚠️ pas de "0"
 ];
 
 const WIN_PROB = 1 / 8; // ✅ 1 chance sur 8 de gagner
@@ -86,8 +85,6 @@ function regeneratePOFTickets() {
     if (Math.random() < WIN_PROB) {
       // ✅ Ticket gagnant
       revealed = ticketType;
-
-      // Tirer un gain dans la distribution
       const pool = [];
       POF_DISTRIBUTION.forEach(d => {
         for (let j = 0; j < d.count; j++) pool.push(d.gain);
@@ -210,7 +207,6 @@ app.get("/api/pof/ticket/:id", (req, res) => {
   });
 });
 
-// Marquer un ticket POF comme utilisé
 app.post("/api/pof/use/:id", (req, res) => {
   const { code } = req.body;
   const t = pofTickets.find(tt => tt.id === req.params.id);
@@ -270,10 +266,23 @@ app.get("/api/admin/checkPOF/:id", (req, res) => {
   });
 });
 
+// ✅ Reset les deux
 app.post("/api/admin/reset", (req, res) => {
   regenerateTickets();
   regeneratePOFTickets();
   res.json({ success: true, message: "🎟️ Inventaire réinitialisé." });
+});
+
+// ✅ Reset uniquement Millionnaire
+app.post("/api/admin/resetMillionaire", (req, res) => {
+  regenerateTickets();
+  res.json({ success: true, message: "🎟️ Tickets Millionnaire réinitialisés." });
+});
+
+// ✅ Reset uniquement Pile ou Face
+app.post("/api/admin/resetPOF", (req, res) => {
+  regeneratePOFTickets();
+  res.json({ success: true, message: "🪙 Tickets Pile ou Face réinitialisés." });
 });
 
 // --------------------
