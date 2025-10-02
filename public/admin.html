@@ -37,39 +37,41 @@
 
   <div id="result"></div>
 
-  <script>
-    async function checkTicket() {
-      const game = document.getElementById("gameType").value; // récupère bien le select
-      const id = document.getElementById("ticketId").value.trim();
-      if (!id) return alert("⚠️ Entre un numéro !");
+ <script>
+  async function checkTicket() {
+    const game = document.getElementById("gameType").value;
+    const id = document.getElementById("ticketId").value.trim();
+    if (!id) return alert("⚠️ Entre un numéro !");
 
-      let url = "";
-      if (game === "millionaire") {
-        url = `/api/admin/checkTicket/${id}`;
-      } else if (game === "pof") {
-        url = `/api/admin/checkPOF/${id}`;
-      }
-
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-
-        if (res.ok) {
-          let msg = `🎫 [${game.toUpperCase()}] Ticket ${data.id} → `;
-          if (data.gain === "0") {
-            msg += "❌ PERDANT";
-          } else {
-            msg += `🏆 GAGNANT → ${data.gain}`;
-          }
-          if (data.used) msg += " (⚠️ déjà utilisé)";
-          document.getElementById("result").innerText = msg;
-        } else {
-          document.getElementById("result").innerText = `❌ Erreur: ${data.error || "inconnue"}`;
-        }
-      } catch (e) {
-        document.getElementById("result").innerText = "❌ Erreur serveur";
-      }
+    let url = "";
+    if (game === "millionaire") {
+      url = `/api/admin/checkTicket/${id}`;
+    } else if (game === "pof") {
+      url = `/api/admin/checkPOF/${id}`;
     }
-  </script>
+
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (res.ok) {
+        let msg = `🎫 [${game.toUpperCase()}] Ticket #${data.id} → `;
+
+        if (data.gain === "0" || data.gain === "PERDU") {
+          msg += "❌ PERDANT";
+        } else {
+          msg += `🏆 GAGNANT → ${data.gain}`;
+        }
+
+        if (data.used) msg += " (⚠️ déjà utilisé)";
+        document.getElementById("result").innerText = msg;
+      } else {
+        document.getElementById("result").innerText = `❌ Erreur: ${data.error || "inconnue"}`;
+      }
+    } catch (e) {
+      document.getElementById("result").innerText = "❌ Erreur serveur";
+    }
+  }
+</script>
 </body>
 </html>

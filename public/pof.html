@@ -152,38 +152,45 @@
       );
     }
 
-    function initScratchOverElement(canvas, target) {
-      const rect = target.getBoundingClientRect();
+   function initScratchOverElement(canvas, target) {
+  const w = target.offsetWidth;
+  const h = target.offsetHeight;
+  const x = target.offsetLeft;
+  const y = target.offsetTop;
 
-      canvas.width = rect.width;
-      canvas.height = rect.height;
-      canvas.style.width = rect.width + "px";
-      canvas.style.height = rect.height + "px";
-      canvas.style.top = target.offsetTop + "px";
-      canvas.style.left = target.offsetLeft + "px";
-      canvas.style.borderRadius = getComputedStyle(target).borderRadius;
+  // Redimensionne et repositionne le canvas
+  canvas.width = w;
+  canvas.height = h;
+  canvas.style.width = w + "px";
+  canvas.style.height = h + "px";
+  canvas.style.left = x + "px";
+  canvas.style.top = y + "px";
+  canvas.style.borderRadius = getComputedStyle(target).borderRadius;
+  canvas.style.position = "absolute";
 
-      const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "gray";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // Remplissage gris initial
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "gray";
+  ctx.fillRect(0, 0, w, h);
 
-      let scratching = false;
+  let scratching = false;
 
-      canvas.addEventListener("mousedown", () => scratching = true);
-      canvas.addEventListener("mouseup", () => scratching = false);
-      canvas.addEventListener("mouseleave", () => scratching = false);
+  canvas.addEventListener("mousedown", () => scratching = true);
+  canvas.addEventListener("mouseup", () => scratching = false);
+  canvas.addEventListener("mouseleave", () => scratching = false);
 
-      canvas.addEventListener("mousemove", e => {
-        if (!scratching) return;
-        const r = canvas.getBoundingClientRect();
-        const x = e.clientX - r.left;
-        const y = e.clientY - r.top;
-        ctx.globalCompositeOperation = "destination-out";
-        ctx.beginPath();
-        ctx.arc(x, y, 20, 0, 2 * Math.PI);
-        ctx.fill();
-      });
-    }
+  canvas.addEventListener("mousemove", e => {
+    if (!scratching) return;
+    const r = canvas.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.beginPath();
+    ctx.arc(x, y, 20, 0, 2 * Math.PI);
+    ctx.fill();
+  });
+}
+
 
     loadTicket();
   </script>
