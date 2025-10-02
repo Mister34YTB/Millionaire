@@ -80,6 +80,10 @@
       left: 0;
       z-index: 2;
     }
+    .fake-lost {
+      color: red;
+      text-decoration: line-through;
+    }
   </style>
 </head>
 <body>
@@ -89,13 +93,19 @@
     <div class="coin" id="coinText">FACE</div>
     <div class="gain" id="gainText">???</div>
     <div class="ticket-id" id="ticketIdText">#0001</div>
-    <canvas id="scratch" width="500" height="600"></canvas>
+    
+    <!-- Canvas pièce -->
+    <canvas id="scratchCoin" width="500" height="600"></canvas>
+    <!-- Canvas gain -->
+    <canvas id="scratchGain" width="500" height="600"></canvas>
   </div>
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const id = urlParams.get("id");
     const code = urlParams.get("code");
+
+    let ticketData = null;
 
     async function loadTicket() {
       const res = await fetch(`/api/pof/ticket/${id}?code=${code}`);
@@ -105,76 +115,82 @@
       }
       const data = await res.json();
 
-      // Ticket déjà utilisé
       if (data.used) {
         document.body.innerHTML = "<h1>⚠️ Ce ticket a déjà été utilisé.<br>Achetez un autre ticket.</h1>";
         return;
       }
 
-      // Affichage infos
       document.getElementById("ticketType").innerText = data.type;
-      document.getElementById("coinText").innerText = data.revealed || data.type;
-      document.getElementById("gainText").innerText = data.gain;
+      document.getElementById("coinText").innerText = data.revealed;
       document.getElementById("ticketIdText").innerText = `#${data.id}`;
 
-      window.ticketData = data;
+      // Affichage du gain
+      if (data.gain === "PERDU") {
+        const fakeLots = ["5000€","200€","50€","15€","5€","2€","1€"];
+        const randomFake = fakeLots[Math.floor(Math.random() * fakeLots.length)];
+        const gainElem = document.getElementById("gainText");
+        gainElem.innerText = randomFake;
+        gainElem.classList.add("fake-lost");
+      } else {
+        document.getElementById("gainText").innerText = data.gain;
+      }
+
+      ticketData = data;
     }
 
     loadTicket();
 
-    // --- Grattage avec canvas ---
-    const canvas = document.getElementById("scratch");
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "gray";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // --- Fonction de grattage générique ---
+    function setupScratch(canvas, area) {
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "gray";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    let scratching = false;
-    canvas.addEventListener("mousedown", () => scratching = true);
-    canvas.addEventListener("mouseup", () => {
-      scratching = false;
-      checkScratchProgress();
-    });
-    canvas.addEventListener("mousemove", scratch);
+      let scratching = false;
+      let scratchedPixels = 0;
+      const totalPixels = area.w * area.h;
 
-    function scratch(e) {
-      if (!scratching) return;
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      canvas.addEventListener("mousedown", () => scratching = true);
+      canvas.addEventListener("mouseup", () => scratching = false);
+      canvas.addEventListener("mousemove", scratch);
 
-      ctx.globalCompositeOperation = "destination-out";
-      ctx.beginPath();
-      ctx.arc(x, y, 25, 0, 2 * Math.PI);
-      ctx.fill();
-    }
+      function scratch(e) {
+        if (!scratching) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
 
-    function checkScratchProgress() {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      let total = imageData.data.length / 4;
-      let cleared = 0;
+        if (x > area.x && x < area.x + area.w && y > area.y && y < area.y + area.h) {
+          ctx.globalCompositeOperation = "destination-out";
+          ctx.beginPath();
+          ctx.arc(x, y, 25, 0, 2 * Math.PI);
+          ctx.fill();
 
-      for (let i = 0; i < imageData.data.length; i += 4) {
-        if (imageData.data[i + 3] === 0) cleared++;
-      }
-
-      const percent = cleared / total;
-      if (percent > 0.7) {
-        markUsed();
+          scratchedPixels += Math.PI * 25 * 25;
+          if (scratchedPixels > totalPixels * 0.5) {
+            markUsed();
+          }
+        }
       }
     }
+
+    // Coin zone (centrée)
+    setupScratch(document.getElementById("scratchCoin"), {x:150,y:140,w:200,h:200});
+    // Gain zone (centrée bas)
+    setupScratch(document.getElementById("scratchGain"), {x:125,y:410,w:250,h:70});
 
     async function markUsed() {
-      if (!window.ticketData || window.ticketData.used) return;
+      if (!ticketData || ticketData.used) return;
 
-      const res = await fetch(`/api/pof/use/${window.ticketData.id}`, {
+      const res = await fetch(`/api/pof/use/${ticketData.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: window.ticketData.code })
+        body: JSON.stringify({ code: ticketData.code })
       });
       const data = await res.json();
 
       if (data.success) {
-        window.ticketData.used = true;
+        ticketData.used = true;
         alert("🗑️ Ce ticket est détruit après utilisation !");
       }
     }
