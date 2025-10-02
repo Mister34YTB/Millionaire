@@ -116,7 +116,9 @@
     }
 
     async function loadTicket() {
-      const res = await fetch(`/api/pof/ticket/${id}?code=${code}`);
+      const res = await fetch(`/api/pof/ticket/${id}?code=${code}`, {
+        method: "POST" // 👉 on force la récupération en POST pour marquer "utilisé"
+      });
       if (!res.ok) {
         document.body.innerHTML = "<h1>❌ Ticket introuvable ou code invalide.</h1>";
         return;
