@@ -50,6 +50,7 @@
       font-size: 40px;
       font-weight: bold;
       z-index: 1;
+      color: transparent; /* masqué au départ pour éviter spoil */
     }
     .gain {
       position: absolute;
@@ -66,6 +67,7 @@
       font-size: 28px;
       font-weight: bold;
       z-index: 1;
+      color: transparent; /* masqué au départ pour éviter spoil */
     }
     .ticket-id {
       position: absolute;
@@ -115,97 +117,63 @@
       return POF_DISTRIBUTION[i].gain;
     }
 
-   async function loadTicket() {
-  const res = await fetch(`/api/pof/ticket/${id}?code=${code}`);
-  if (!res.ok) {
-    document.body.innerHTML = "<h1>❌ Ticket introuvable ou code invalide.</h1>";
-    return;
-  }
-  const data = await res.json();
+    async function loadTicket() {
+      const res = await fetch(`/api/pof/ticket/${id}?code=${code}`);
+      if (!res.ok) {
+        document.body.innerHTML = "<h1>❌ Ticket introuvable ou code invalide.</h1>";
+        return;
+      }
+      const data = await res.json();
 
-  if (data.used) {
-    document.body.innerHTML = "<h1>⚠️ Ce ticket a déjà été utilisé.<br>Achetez un autre ticket.</h1>";
-    return;
-  }
+      if (data.used) {
+        document.body.innerHTML = "<h1>⚠️ Ce ticket a déjà été utilisé.<br>Achetez un autre ticket.</h1>";
+        return;
+      }
 
-  // masquer le texte pour éviter le spoil
-  document.getElementById("coinText").style.color = "transparent";
-  document.getElementById("gainText").style.color = "transparent";
+      // Masquer les textes pour éviter spoil
+      const coinTextEl = document.getElementById("coinText");
+      const gainTextEl = document.getElementById("gainText");
+      coinTextEl.style.color = "transparent";
+      gainTextEl.style.color = "transparent";
 
-  document.getElementById("ticketType").innerText = data.type;
-  document.getElementById("coinText").innerText = data.revealed || data.type;
-  document.getElementById("gainText").innerText = data.gain === "PERDU" ? getFakePrize() : data.gain;
-  document.getElementById("ticketIdText").innerText = `#${data.id}`;
+      document.getElementById("ticketType").innerText = data.type;
+      coinTextEl.innerText = data.revealed || data.type;
+      gainTextEl.innerText = (data.gain === "PERDU") ? getFakePrize() : data.gain;
+      document.getElementById("ticketIdText").innerText = `#${data.id}`;
 
-  const container = document.getElementById("ticketContainer");
+      const container = document.getElementById("ticketContainer");
 
-  // attendre un cycle de rendu pour que la position soit correcte
-  await new Promise(requestAnimationFrame);
+      // attendre un cycle de rendu pour positions correctes
+      await new Promise(requestAnimationFrame);
 
-  initScratchOverElement(document.getElementById("scratchCoin"), document.getElementById("coinText"), container);
-  initScratchOverElement(document.getElementById("scratchGain"), document.getElementById("gainText"), container);
+      initScratchOverElement(document.getElementById("scratchCoin"), coinTextEl, container);
+      initScratchOverElement(document.getElementById("scratchGain"), gainTextEl, container);
 
-  // une fois les zones dessinées, on remet la couleur
-  document.getElementById("coinText").style.color = "black";
-  document.getElementById("gainText").style.color = "black";
+      // afficher les textes après que le canvas est posé
+      coinTextEl.style.color = "black";
+      gainTextEl.style.color = "black";
 
-  // marquer utilisé
-  await fetch(`/api/pof/use/${id}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code })
-  });
-}
-
-function initScratchOverElement(canvas, target, container) {
-  const rect = target.getBoundingClientRect();
-  const parentRect = container.getBoundingClientRect();
-  const w = rect.width, h = rect.height;
-  const x = rect.left - parentRect.left, y = rect.top - parentRect.top;
-
-  canvas.width = w;
-  canvas.height = h;
-  canvas.style.left = x + "px";
-  canvas.style.top = y + "px";
-  canvas.style.width = w + "px";
-  canvas.style.height = h + "px";
-  canvas.style.borderRadius = getComputedStyle(target).borderRadius;
-
-  const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "gray";
-  ctx.fillRect(0, 0, w, h);
-
-  let scratching = false;
-  canvas.addEventListener("mousedown", () => scratching = true);
-  canvas.addEventListener("mouseup", () => scratching = false);
-  canvas.addEventListener("mouseleave", () => scratching = false);
-  canvas.addEventListener("mousemove", e => {
-    if (!scratching) return;
-    const r = canvas.getBoundingClientRect();
-    const x = e.clientX - r.left, y = e.clientY - r.top;
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.beginPath();
-    ctx.arc(x, y, 20, 0, 2 * Math.PI);
-    ctx.fill();
-  });
-}
-
-
+      // Marquer comme utilisé côté serveur
+      await fetch(`/api/pof/use/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code })
+      });
+    }
 
     function initScratchOverElement(canvas, target, container) {
-     const rect = target.getBoundingClientRect();
-const parentRect = container.getBoundingClientRect();
-const x = rect.left - parentRect.left;
-const y = rect.top - parentRect.top;
+      const rect = target.getBoundingClientRect();
+      const parentRect = container.getBoundingClientRect();
+      const w = rect.width, h = rect.height;
+      const x = rect.left - parentRect.left, y = rect.top - parentRect.top;
 
       canvas.width = w;
       canvas.height = h;
-      canvas.style.width = w + "px";
-      canvas.style.height = h + "px";
       canvas.style.left = x + "px";
       canvas.style.top = y + "px";
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
       canvas.style.borderRadius = getComputedStyle(target).borderRadius;
-      canvas.style.position = "absolute";
 
       const ctx = canvas.getContext("2d");
       ctx.fillStyle = "gray";
@@ -215,12 +183,10 @@ const y = rect.top - parentRect.top;
       canvas.addEventListener("mousedown", () => scratching = true);
       canvas.addEventListener("mouseup", () => scratching = false);
       canvas.addEventListener("mouseleave", () => scratching = false);
-
       canvas.addEventListener("mousemove", e => {
         if (!scratching) return;
         const r = canvas.getBoundingClientRect();
-        const x = e.clientX - r.left;
-        const y = e.clientY - r.top;
+        const x = e.clientX - r.left, y = e.clientY - r.top;
         ctx.globalCompositeOperation = "destination-out";
         ctx.beginPath();
         ctx.arc(x, y, 20, 0, 2 * Math.PI);
