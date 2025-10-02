@@ -110,7 +110,6 @@
       { gain: "1€", count: 1000 }
     ];
 
-    // Tire un faux lot aléatoire
     function getFakePrize() {
       const i = Math.floor(Math.random() * POF_DISTRIBUTION.length);
       return POF_DISTRIBUTION[i].gain;
@@ -141,56 +140,49 @@
       document.getElementById("ticketIdText").innerText = `#${data.id}`;
       window.ticketData = data;
 
-      // Initialiser les zones de grattage une fois les données chargées
-      initScratchOverElement(
-        document.getElementById("scratchCoin"),
-        document.getElementById("coinText")
-      );
-      initScratchOverElement(
-        document.getElementById("scratchGain"),
-        document.getElementById("gainText")
-      );
+      const container = document.getElementById("ticketContainer");
+      initScratchOverElement(document.getElementById("scratchCoin"), document.getElementById("coinText"), container);
+      initScratchOverElement(document.getElementById("scratchGain"), document.getElementById("gainText"), container);
     }
 
-   function initScratchOverElement(canvas, target) {
-  const w = target.offsetWidth;
-  const h = target.offsetHeight;
-  const x = target.offsetLeft;
-  const y = target.offsetTop;
+    function initScratchOverElement(canvas, target, container) {
+      const rect = target.getBoundingClientRect();
+      const parentRect = container.getBoundingClientRect();
 
-  // Redimensionne et repositionne le canvas
-  canvas.width = w;
-  canvas.height = h;
-  canvas.style.width = w + "px";
-  canvas.style.height = h + "px";
-  canvas.style.left = x + "px";
-  canvas.style.top = y + "px";
-  canvas.style.borderRadius = getComputedStyle(target).borderRadius;
-  canvas.style.position = "absolute";
+      const w = rect.width;
+      const h = rect.height;
+      const x = rect.left - parentRect.left;
+      const y = rect.top - parentRect.top;
 
-  // Remplissage gris initial
-  const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "gray";
-  ctx.fillRect(0, 0, w, h);
+      canvas.width = w;
+      canvas.height = h;
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      canvas.style.left = x + "px";
+      canvas.style.top = y + "px";
+      canvas.style.borderRadius = getComputedStyle(target).borderRadius;
+      canvas.style.position = "absolute";
 
-  let scratching = false;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "gray";
+      ctx.fillRect(0, 0, w, h);
 
-  canvas.addEventListener("mousedown", () => scratching = true);
-  canvas.addEventListener("mouseup", () => scratching = false);
-  canvas.addEventListener("mouseleave", () => scratching = false);
+      let scratching = false;
+      canvas.addEventListener("mousedown", () => scratching = true);
+      canvas.addEventListener("mouseup", () => scratching = false);
+      canvas.addEventListener("mouseleave", () => scratching = false);
 
-  canvas.addEventListener("mousemove", e => {
-    if (!scratching) return;
-    const r = canvas.getBoundingClientRect();
-    const x = e.clientX - r.left;
-    const y = e.clientY - r.top;
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.beginPath();
-    ctx.arc(x, y, 20, 0, 2 * Math.PI);
-    ctx.fill();
-  });
-}
-
+      canvas.addEventListener("mousemove", e => {
+        if (!scratching) return;
+        const r = canvas.getBoundingClientRect();
+        const x = e.clientX - r.left;
+        const y = e.clientY - r.top;
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.beginPath();
+        ctx.arc(x, y, 20, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+    }
 
     loadTicket();
   </script>
