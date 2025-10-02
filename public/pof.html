@@ -76,13 +76,18 @@
     }
     canvas {
       position: absolute;
-      top: 0;
-      left: 0;
       z-index: 2;
     }
-    .fake-lost {
-      color: red;
-      text-decoration: line-through;
+    #scratchCoin {
+      top: 140px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-radius: 50%;
+    }
+    #scratchGain {
+      bottom: 120px;
+      left: 50%;
+      transform: translateX(-50%);
     }
   </style>
 </head>
@@ -93,19 +98,17 @@
     <div class="coin" id="coinText">FACE</div>
     <div class="gain" id="gainText">???</div>
     <div class="ticket-id" id="ticketIdText">#0001</div>
-    
-    <!-- Canvas pièce -->
-    <canvas id="scratchCoin" width="500" height="600"></canvas>
-    <!-- Canvas gain -->
-    <canvas id="scratchGain" width="500" height="600"></canvas>
+
+    <!-- Zone grattable : pièce -->
+    <canvas id="scratchCoin" width="200" height="200"></canvas>
+    <!-- Zone grattable : gain -->
+    <canvas id="scratchGain" width="250" height="70"></canvas>
   </div>
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const id = urlParams.get("id");
     const code = urlParams.get("code");
-
-    let ticketData = null;
 
     async function loadTicket() {
       const res = await fetch(`/api/pof/ticket/${id}?code=${code}`);
@@ -121,79 +124,38 @@
       }
 
       document.getElementById("ticketType").innerText = data.type;
-      document.getElementById("coinText").innerText = data.revealed;
+      document.getElementById("coinText").innerText = data.revealed || data.type;
+      document.getElementById("gainText").innerText = data.gain;
       document.getElementById("ticketIdText").innerText = `#${data.id}`;
 
-      // Affichage du gain
-      if (data.gain === "PERDU") {
-        const fakeLots = ["5000€","200€","50€","15€","5€","2€","1€"];
-        const randomFake = fakeLots[Math.floor(Math.random() * fakeLots.length)];
-        const gainElem = document.getElementById("gainText");
-        gainElem.innerText = randomFake;
-        gainElem.classList.add("fake-lost");
-      } else {
-        document.getElementById("gainText").innerText = data.gain;
-      }
-
-      ticketData = data;
+      window.ticketData = data;
     }
 
     loadTicket();
 
-    // --- Fonction de grattage générique ---
-    function setupScratch(canvas, area) {
+    function initScratch(canvas) {
       const ctx = canvas.getContext("2d");
       ctx.fillStyle = "gray";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       let scratching = false;
-      let scratchedPixels = 0;
-      const totalPixels = area.w * area.h;
-
       canvas.addEventListener("mousedown", () => scratching = true);
       canvas.addEventListener("mouseup", () => scratching = false);
-      canvas.addEventListener("mousemove", scratch);
-
-      function scratch(e) {
+      canvas.addEventListener("mousemove", e => {
         if (!scratching) return;
         const rect = canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
-        if (x > area.x && x < area.x + area.w && y > area.y && y < area.y + area.h) {
-          ctx.globalCompositeOperation = "destination-out";
-          ctx.beginPath();
-          ctx.arc(x, y, 25, 0, 2 * Math.PI);
-          ctx.fill();
-
-          scratchedPixels += Math.PI * 25 * 25;
-          if (scratchedPixels > totalPixels * 0.5) {
-            markUsed();
-          }
-        }
-      }
-    }
-
-    // Coin zone (centrée)
-    setupScratch(document.getElementById("scratchCoin"), {x:150,y:140,w:200,h:200});
-    // Gain zone (centrée bas)
-    setupScratch(document.getElementById("scratchGain"), {x:125,y:410,w:250,h:70});
-
-    async function markUsed() {
-      if (!ticketData || ticketData.used) return;
-
-      const res = await fetch(`/api/pof/use/${ticketData.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: ticketData.code })
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.beginPath();
+        ctx.arc(x, y, 20, 0, 2 * Math.PI);
+        ctx.fill();
       });
-      const data = await res.json();
-
-      if (data.success) {
-        ticketData.used = true;
-        alert("🗑️ Ce ticket est détruit après utilisation !");
-      }
     }
+
+    initScratch(document.getElementById("scratchCoin"));
+    initScratch(document.getElementById("scratchGain"));
   </script>
 </body>
 </html>
