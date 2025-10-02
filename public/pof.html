@@ -116,36 +116,42 @@
     }
 
     async function loadTicket() {
-      const res = await fetch(`/api/pof/ticket/${id}?code=${code}`, {
-        method: "POST" // 👉 on force la récupération en POST pour marquer "utilisé"
-      });
-      if (!res.ok) {
-        document.body.innerHTML = "<h1>❌ Ticket introuvable ou code invalide.</h1>";
-        return;
-      }
-      const data = await res.json();
+  const res = await fetch(`/api/pof/ticket/${id}?code=${code}`);
+  if (!res.ok) {
+    document.body.innerHTML = "<h1>❌ Ticket introuvable ou code invalide.</h1>";
+    return;
+  }
+  const data = await res.json();
 
-      if (data.used) {
-        document.body.innerHTML = "<h1>⚠️ Ce ticket a déjà été utilisé.<br>Achetez un autre ticket.</h1>";
-        return;
-      }
+  if (data.used) {
+    document.body.innerHTML = "<h1>⚠️ Ce ticket a déjà été utilisé.<br>Achetez un autre ticket.</h1>";
+    return;
+  }
 
-      document.getElementById("ticketType").innerText = data.type;
-      document.getElementById("coinText").innerText = data.revealed || data.type;
+  // 👉 Marquer comme utilisé immédiatement après affichage
+  await fetch(`/api/pof/use/${id}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code })
+  });
 
-      if (data.gain === "PERDU") {
-        document.getElementById("gainText").innerText = getFakePrize();
-      } else {
-        document.getElementById("gainText").innerText = data.gain;
-      }
+  document.getElementById("ticketType").innerText = data.type;
+  document.getElementById("coinText").innerText = data.revealed || data.type;
 
-      document.getElementById("ticketIdText").innerText = `#${data.id}`;
-      window.ticketData = data;
+  if (data.gain === "PERDU") {
+    document.getElementById("gainText").innerText = getFakePrize();
+  } else {
+    document.getElementById("gainText").innerText = data.gain;
+  }
 
-      const container = document.getElementById("ticketContainer");
-      initScratchOverElement(document.getElementById("scratchCoin"), document.getElementById("coinText"), container);
-      initScratchOverElement(document.getElementById("scratchGain"), document.getElementById("gainText"), container);
-    }
+  document.getElementById("ticketIdText").innerText = `#${data.id}`;
+  window.ticketData = data;
+
+  const container = document.getElementById("ticketContainer");
+  initScratchOverElement(document.getElementById("scratchCoin"), document.getElementById("coinText"), container);
+  initScratchOverElement(document.getElementById("scratchGain"), document.getElementById("gainText"), container);
+}
+
 
     function initScratchOverElement(canvas, target, container) {
       const rect = target.getBoundingClientRect();
