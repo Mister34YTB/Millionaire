@@ -82,23 +82,6 @@
       z-index: 2;
       cursor: pointer;
     }
-    /* Canvas alignés exactement sur .coin et .gain */
-    #scratchCoin {
-      top: 130px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 200px;
-      height: 200px;
-      border-radius: 50%;
-    }
-    #scratchGain {
-      bottom: 110px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 250px;
-      height: 70px;
-      border-radius: 8px;
-    }
   </style>
 </head>
 <body>
@@ -110,8 +93,8 @@
     <div class="ticket-id" id="ticketIdText">#0001</div>
 
     <!-- Zones de grattage -->
-    <canvas id="scratchCoin" width="200" height="200"></canvas>
-    <canvas id="scratchGain" width="250" height="70"></canvas>
+    <canvas id="scratchCoin"></canvas>
+    <canvas id="scratchGain"></canvas>
   </div>
 
   <script>
@@ -155,8 +138,11 @@
       gainTextEl.innerText = (data.gain === "PERDU") ? getFakePrize() : data.gain;
       document.getElementById("ticketIdText").innerText = `#${data.id}`;
 
-      initScratch(document.getElementById("scratchCoin"), coinTextEl);
-      initScratch(document.getElementById("scratchGain"), gainTextEl);
+      const container = document.getElementById("ticketContainer");
+
+      // placer les canvas APRÈS rendu
+      await placeScratchOverElement(document.getElementById("scratchCoin"), coinTextEl, container);
+      await placeScratchOverElement(document.getElementById("scratchGain"), gainTextEl, container);
 
       // montrer les textes après que le canvas est posé
       coinTextEl.style.color = "black";
@@ -170,21 +156,40 @@
       });
     }
 
-    function initScratch(canvas, targetEl) {
+    async function placeScratchOverElement(canvas, target, container) {
+      // attendre un cycle de rendu pour que les positions CSS soient correctes
+      await new Promise(requestAnimationFrame);
+
+      const rect = target.getBoundingClientRect();
+      const parentRect = container.getBoundingClientRect();
+
+      const w = rect.width;
+      const h = rect.height;
+      const x = rect.left - parentRect.left;
+      const y = rect.top - parentRect.top;
+
+      canvas.width = w;
+      canvas.height = h;
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      canvas.style.left = x + "px";
+      canvas.style.top = y + "px";
+      canvas.style.position = "absolute";
+      canvas.style.borderRadius = getComputedStyle(target).borderRadius;
+
       const ctx = canvas.getContext("2d");
       ctx.fillStyle = "gray";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, w, h);
 
       let scratching = false;
       canvas.addEventListener("mousedown", () => scratching = true);
       canvas.addEventListener("mouseup", () => scratching = false);
       canvas.addEventListener("mouseleave", () => scratching = false);
-
       canvas.addEventListener("mousemove", e => {
         if (!scratching) return;
-        const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const r = canvas.getBoundingClientRect();
+        const x = e.clientX - r.left;
+        const y = e.clientY - r.top;
         ctx.globalCompositeOperation = "destination-out";
         ctx.beginPath();
         ctx.arc(x, y, 20, 0, 2 * Math.PI);
