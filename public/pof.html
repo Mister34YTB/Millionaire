@@ -82,6 +82,23 @@
       z-index: 2;
       cursor: pointer;
     }
+    /* Zones grattage ajustées avec bordure incluse */
+    #scratchCoin {
+      top: 140px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 210px;   /* 200px + 2×5px bordure */
+      height: 210px;
+      border-radius: 50%;
+    }
+    #scratchGain {
+      bottom: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 258px;   /* 250px + 2×4px bordure */
+      height: 78px;   /* 70px + 2×4px bordure */
+      border-radius: 8px;
+    }
   </style>
 </head>
 <body>
@@ -93,8 +110,8 @@
     <div class="ticket-id" id="ticketIdText">#0001</div>
 
     <!-- Zones de grattage -->
-    <canvas id="scratchCoin"></canvas>
-    <canvas id="scratchGain"></canvas>
+    <canvas id="scratchCoin" width="210" height="210"></canvas>
+    <canvas id="scratchGain" width="258" height="78"></canvas>
   </div>
 
   <script>
@@ -138,17 +155,13 @@
       gainTextEl.innerText = (data.gain === "PERDU") ? getFakePrize() : data.gain;
       document.getElementById("ticketIdText").innerText = `#${data.id}`;
 
-      const container = document.getElementById("ticketContainer");
+      initScratch(document.getElementById("scratchCoin"));
+      initScratch(document.getElementById("scratchGain"));
 
-      // placer les canvas APRÈS rendu
-      await placeScratchOverElement(document.getElementById("scratchCoin"), coinTextEl, container);
-      await placeScratchOverElement(document.getElementById("scratchGain"), gainTextEl, container);
-
-      // montrer les textes après que le canvas est posé
       coinTextEl.style.color = "black";
       gainTextEl.style.color = "black";
 
-      // marquer utilisé côté serveur
+      // marquer utilisé côté serveur (si tu veux garder l’auto-destruction)
       await fetch(`/api/pof/use/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -156,54 +169,26 @@
       });
     }
 
-  async function placeScratchOverElement(canvas, target, container) {
-  await new Promise(requestAnimationFrame);
+    function initScratch(canvas) {
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "gray";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const rect = target.getBoundingClientRect();
-  const parentRect = container.getBoundingClientRect();
-
-  let w = rect.width;
-  let h = rect.height;
-  let x = rect.left - parentRect.left;
-  let y = rect.top - parentRect.top;
-
-  // ✅ ajuster selon la classe
-  if (target.classList.contains("coin")) {
-    w += 10; h += 10; x -= 5; y -= 5;
-  }
-  if (target.classList.contains("gain")) {
-    w += 8; h += 8; x -= 4; y -= 4;
-  }
-
-  canvas.width = w;
-  canvas.height = h;
-  canvas.style.width = w + "px";
-  canvas.style.height = h + "px";
-  canvas.style.left = x + "px";
-  canvas.style.top = y + "px";
-  canvas.style.position = "absolute";
-  canvas.style.borderRadius = getComputedStyle(target).borderRadius;
-
-  const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "gray";
-  ctx.fillRect(0, 0, w, h);
-
-  let scratching = false;
-  canvas.addEventListener("mousedown", () => scratching = true);
-  canvas.addEventListener("mouseup", () => scratching = false);
-  canvas.addEventListener("mouseleave", () => scratching = false);
-  canvas.addEventListener("mousemove", e => {
-    if (!scratching) return;
-    const r = canvas.getBoundingClientRect();
-    const x = e.clientX - r.left;
-    const y = e.clientY - r.top;
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.beginPath();
-    ctx.arc(x, y, 20, 0, 2 * Math.PI);
-    ctx.fill();
-  });
-}
-
+      let scratching = false;
+      canvas.addEventListener("mousedown", () => scratching = true);
+      canvas.addEventListener("mouseup", () => scratching = false);
+      canvas.addEventListener("mouseleave", () => scratching = false);
+      canvas.addEventListener("mousemove", e => {
+        if (!scratching) return;
+        const r = canvas.getBoundingClientRect();
+        const x = e.clientX - r.left;
+        const y = e.clientY - r.top;
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.beginPath();
+        ctx.arc(x, y, 20, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+    }
 
     loadTicket();
   </script>
