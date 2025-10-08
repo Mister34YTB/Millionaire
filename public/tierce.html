@@ -15,31 +15,17 @@
       height: 100vh;
     }
 
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 15px 25px;
-    }
-
-    #courseNumber {
-      font-size: 1.5em;
-      font-weight: bold;
-      color: #00ff88;
-      background: rgba(0, 0, 0, 0.4);
-      padding: 6px 18px;
-      border-radius: 10px;
-    }
+    h1 { margin-top: 20px; }
 
     #jackpot {
       font-size: 1.5em;
       font-weight: bold;
+      margin: 10px 0;
       background: rgba(0, 0, 0, 0.4);
-      padding: 6px 18px;
+      display: inline-block;
+      padding: 6px 20px;
       border-radius: 10px;
     }
-
-    h1 { margin-top: 10px; }
 
     .track {
       position: relative;
@@ -96,12 +82,8 @@
   </style>
 </head>
 <body>
-  <header>
-    <div id="courseNumber">#1</div>
-    <div id="jackpot">💰 Jackpot : 15 000 €</div>
-  </header>
-
   <h1>🏇 Course du Tiercé Automatique</h1>
+  <div id="jackpot">💰 Jackpot : 15 000 €</div>
   <div id="raceArea"></div>
 
   <div id="countdown"></div>
@@ -118,49 +100,16 @@
     const podiumDiv = document.getElementById("podium");
     const jackpotDiv = document.getElementById("jackpot");
     const countdownDiv = document.getElementById("countdown");
-    const courseNumDiv = document.getElementById("courseNumber");
 
     let jackpot = 15000;
-    let raceNumber = 1;
     let raceInProgress = false;
     let countdownTimer;
-    const raceDuration = 30; // durée d'une course
-    const countdownDuration = 5 * 60; // 5 minutes
-
-    // ---- Sauvegarde du chrono, jackpot et course ----
-    function saveState() {
-      localStorage.setItem("tierce_state", JSON.stringify({
-        startTime: window.startTime,
-        jackpot,
-        raceNumber
-      }));
-    }
-
-    function loadState() {
-      const saved = localStorage.getItem("tierce_state");
-      if (saved) {
-        const data = JSON.parse(saved);
-        jackpot = data.jackpot || 15000;
-        raceNumber = data.raceNumber || 1;
-        window.startTime = data.startTime || Date.now();
-      } else {
-        window.startTime = Date.now();
-      }
-      updateDisplay();
-    }
-
-    function updateDisplay() {
-      jackpotDiv.textContent = `💰 Jackpot : ${jackpot.toLocaleString('fr-FR')} €`;
-      courseNumDiv.textContent = `#${raceNumber}`;
-    }
 
     function updateJackpot() {
-      jackpot += 10;
-      updateDisplay();
-      saveState();
+      jackpot += 10; // +10€ par minute
+      jackpotDiv.textContent = `💰 Jackpot : ${jackpot.toLocaleString('fr-FR')} €`;
     }
 
-    // ---- Course ----
     function createTracks() {
       raceArea.innerHTML = "";
       for (let i = 1; i <= TOTAL_HORSES; i++) {
@@ -174,15 +123,11 @@
       }
     }
 
-    function formatTime(seconds) {
-      const m = Math.floor(seconds / 60);
-      const s = seconds % 60;
-      return `${m}:${s.toString().padStart(2, '0')}`;
-    }
-
-    function startCountdown(timeLeft) {
+    function startCountdown(duration) {
+      let timeLeft = duration;
       countdownDiv.style.display = "block";
       countdownDiv.textContent = formatTime(timeLeft);
+
       countdownTimer = setInterval(() => {
         timeLeft--;
         countdownDiv.textContent = formatTime(timeLeft);
@@ -192,6 +137,12 @@
           startRace();
         }
       }, 1000);
+    }
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${m}:${s.toString().padStart(2, '0')}`;
     }
 
     function startRace() {
@@ -204,16 +155,21 @@
       const horses = document.querySelectorAll(".horse");
       const speeds = Array.from({ length: TOTAL_HORSES }, () => Math.random() * 0.7 + 0.3);
       const positions = Array(TOTAL_HORSES).fill(0);
+      const finished = [];
 
       const startTime = Date.now();
       const raceInterval = setInterval(() => {
         const elapsed = (Date.now() - startTime) / 1000;
-        const progress = Math.min(elapsed / raceDuration, 1);
+        const progress = Math.min(elapsed / 30, 1); // durée 30 secondes
+        let allFinished = true;
 
         horses.forEach((horse, idx) => {
           if (positions[idx] < 90) {
-            positions[idx] = progress * 90 + Math.random() * 1;
+            positions[idx] = progress * 90 + Math.random() * 1; // un peu de variation
             horse.style.left = positions[idx] + "%";
+            allFinished = false;
+          } else if (!finished.includes(idx + 1)) {
+            finished.push(idx + 1);
           }
         });
 
@@ -234,37 +190,24 @@
         🥈 Cheval n°${top3[1]}<br>
         🥉 Cheval n°${top3[2]}
       `;
-
       fetch("/api/tierce/result", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ race_id: raceNumber, top3, fullOrder, jackpot }),
+        body: JSON.stringify({ top3, fullOrder, jackpot }),
       });
-
-      raceNumber++;
-      updateDisplay();
-      window.startTime = Date.now();
-      saveState();
-      startCountdown(countdownDuration);
     }
 
-    // ---- Reprise après refresh ----
-    function resumeOrStart() {
-      loadState();
-      const elapsed = (Date.now() - window.startTime) / 1000;
-
-      if (elapsed >= countdownDuration) {
-        startRace();
-      } else {
-        const remaining = Math.max(0, countdownDuration - Math.floor(elapsed));
-        startCountdown(remaining);
-      }
-
-      setInterval(updateJackpot, 60000);
+    // Lancer une course toutes les 5 minutes avec timer
+    function scheduleRace() {
+      createTracks();
+      startCountdown(5 * 60); // 5 minutes avant départ
+      setInterval(() => {
+        updateJackpot();
+      }, 60000); // jackpot +10€/min
     }
 
-    createTracks();
-    resumeOrStart();
+    // Initialisation
+    scheduleRace();
   </script>
 </body>
 </html>
