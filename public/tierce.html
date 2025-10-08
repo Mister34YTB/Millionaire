@@ -11,112 +11,138 @@
       color: #fff;
       text-align: center;
       overflow-x: hidden;
-      user-select: none;
+      margin: 0;
+      height: 100vh;
     }
+
     h1 { margin-top: 20px; }
 
-    .info-bar {
-      display: flex;
-      justify-content: center;
-      gap: 40px;
-      margin-top: 10px;
-      font-size: 1.2em;
-    }
-    .jackpot {
-      background: rgba(0,0,0,0.6);
-      padding: 10px 20px;
-      border-radius: 10px;
+    #jackpot, #courseNumber {
+      font-size: 1.5em;
       font-weight: bold;
-    }
-    .timer {
-      background: rgba(0,0,0,0.6);
-      padding: 10px 20px;
+      margin: 10px 0;
+      background: rgba(0, 0, 0, 0.4);
+      display: inline-block;
+      padding: 6px 20px;
       border-radius: 10px;
-      font-weight: bold;
-      color: #00ff99;
+    }
+
+    #courseNumber {
+      margin-left: 10px;
+      color: #00ff88;
     }
 
     .track {
       position: relative;
       width: 90%;
       height: 40px;
-      margin: 10px auto;
+      margin: 12px auto;
       background: rgba(255,255,255,0.1);
       border-radius: 10px;
       overflow: hidden;
     }
+
     .horse {
       position: absolute;
       left: 0;
       top: 0;
       height: 100%;
-      font-size: 22px;
+      font-size: 24px;
       display: flex;
       align-items: center;
       padding-left: 8px;
-      transition: left 0.15s linear;
+      transition: left 0.1s;
+    }
+
+    #countdown {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: #00ff88;
+      font-size: 3em;
+      font-weight: bold;
+      border-radius: 15px;
+      padding: 20px 40px;
+      box-shadow: 0 0 20px rgba(0, 255, 100, 0.5);
+      z-index: 100;
     }
 
     .results {
-      margin-top: 30px;
-      font-size: 1.3em;
+      margin-top: 40px;
+      font-size: 1.5em;
       display: none;
     }
+
     #podium {
-      font-size: 1.2em;
+      font-size: 1.3em;
       line-height: 1.8em;
       background: rgba(0,0,0,0.3);
-      padding: 10px 20px;
+      padding: 10px;
       border-radius: 10px;
       display: inline-block;
       margin-top: 10px;
-    }
-
-    footer {
-      position: fixed;
-      bottom: 10px;
-      left: 0;
-      right: 0;
-      text-align: center;
-      font-size: 0.9em;
-      opacity: 0.7;
     }
   </style>
 </head>
 <body>
   <h1>🏇 Course du Tiercé Automatique</h1>
-  <div class="info-bar">
-    <div class="jackpot" id="jackpot">💰 Jackpot : -- €</div>
-    <div class="timer" id="timer">⏳ Prochaine course : --:--</div>
+  <div>
+    <div id="jackpot">💰 Jackpot : 15 000 €</div>
+    <div id="courseNumber">#1</div>
   </div>
-
-  <h2 id="raceLabel" style="margin-top:15px;">Course en préparation...</h2>
   <div id="raceArea"></div>
+
+  <div id="countdown"></div>
 
   <div class="results" id="results">
     <h2>🏁 Résultat de la course</h2>
     <div id="podium"></div>
   </div>
 
-  <footer>© 2025 Tiercé Automatique – synchronisé avec le bot Discord</footer>
-
   <script>
     const TOTAL_HORSES = 12;
-    const RACE_DURATION = 30_000; // 30 sec
-    const STATE_REFRESH = 5000;   // 5 sec pour update jackpot/timer
     const raceArea = document.getElementById("raceArea");
-    const jackpotDiv = document.getElementById("jackpot");
-    const timerDiv = document.getElementById("timer");
-    const raceLabel = document.getElementById("raceLabel");
     const resultsDiv = document.getElementById("results");
     const podiumDiv = document.getElementById("podium");
+    const jackpotDiv = document.getElementById("jackpot");
+    const countdownDiv = document.getElementById("countdown");
+    const courseNumDiv = document.getElementById("courseNumber");
 
+    let jackpot = 15000;
     let raceInProgress = false;
-    let currentRaceId = 1;
+    let countdownTimer;
+    let raceNumber = 1;
+    const raceDuration = 30; // secondes
+    const countdownDuration = 5 * 60; // 5 minutes
 
-    async function getState() {
-      const res = await fetch("/api/tierce/state");
-      return res.json();
+    function saveState() {
+      localStorage.setItem("tierce_state", JSON.stringify({
+        startTime: window.startTime,
+        jackpot,
+        raceNumber
+      }));
+    }
+
+    function loadState() {
+      const saved = localStorage.getItem("tierce_state");
+      if (saved) {
+        const data = JSON.parse(saved);
+        jackpot = data.jackpot || 15000;
+        raceNumber = data.raceNumber || 1;
+        window.startTime = data.startTime || Date.now();
+      } else {
+        window.startTime = Date.now();
+      }
+      jackpotDiv.textContent = `💰 Jackpot : ${jackpot.toLocaleString('fr-FR')} €`;
+      courseNumDiv.textContent = `#${raceNumber}`;
+    }
+
+    function updateJackpot() {
+      jackpot += 10;
+      jackpotDiv.textContent = `💰 Jackpot : ${jackpot.toLocaleString('fr-FR')} €`;
+      saveState();
     }
 
     function createTracks() {
@@ -132,86 +158,98 @@
       }
     }
 
-    function updateTimer(seconds) {
-      const m = Math.floor(seconds / 60).toString().padStart(2, "0");
-      const s = Math.floor(seconds % 60).toString().padStart(2, "0");
-      timerDiv.textContent = `⏳ Prochaine course : ${m}:${s}`;
-    }
+    function startCountdown(timeLeft) {
+      countdownDiv.style.display = "block";
+      countdownDiv.textContent = formatTime(timeLeft);
 
-    async function syncState() {
-      try {
-        const data = await getState();
-        currentRaceId = data.race_id;
-        jackpotDiv.textContent = `💰 Jackpot : ${Math.floor(data.jackpot).toLocaleString("fr-FR")} €`;
-        updateTimer(data.time_remaining);
-
-        // Si chrono terminé → lancer la course
-        if (data.time_remaining <= 2 && !raceInProgress) {
-          startRace(data.race_id);
+      countdownTimer = setInterval(() => {
+        timeLeft--;
+        countdownDiv.textContent = formatTime(timeLeft);
+        if (timeLeft <= 0) {
+          clearInterval(countdownTimer);
+          countdownDiv.style.display = "none";
+          startRace();
         }
-      } catch (e) {
-        console.error("Erreur état:", e);
-      }
+      }, 1000);
     }
 
-    async function startRace(raceId) {
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${m}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function startRace() {
+      if (raceInProgress) return;
       raceInProgress = true;
       resultsDiv.style.display = "none";
       podiumDiv.innerHTML = "";
-      raceLabel.textContent = `Course #${raceId} en cours...`;
       createTracks();
 
-      const horses = Array.from(document.querySelectorAll(".horse"));
+      const horses = document.querySelectorAll(".horse");
       const speeds = Array.from({ length: TOTAL_HORSES }, () => Math.random() * 0.7 + 0.3);
       const positions = Array(TOTAL_HORSES).fill(0);
-      const finished = [];
 
-      const startTime = performance.now();
+      const startTime = Date.now();
       const raceInterval = setInterval(() => {
-        const now = performance.now();
-        const elapsed = now - startTime;
-        if (elapsed >= RACE_DURATION) {
-          clearInterval(raceInterval);
-          horses.forEach((horse, idx) => {
-            if (!finished.includes(idx + 1)) finished.push(idx + 1);
-          });
-          showResults(finished.slice(0, 3), finished, raceId);
-          raceInProgress = false;
-          return;
-        }
+        const elapsed = (Date.now() - startTime) / 1000;
+        const progress = Math.min(elapsed / raceDuration, 1);
 
-        // Animation fluide
         horses.forEach((horse, idx) => {
           if (positions[idx] < 90) {
-            const randomFactor = Math.random() * 0.5 + 0.75; // petites variations
-            positions[idx] += speeds[idx] * randomFactor;
-            if (positions[idx] > 90) positions[idx] = 90;
+            positions[idx] = progress * 90 + Math.random() * 1;
             horse.style.left = positions[idx] + "%";
           }
         });
+
+        if (progress >= 1) {
+          clearInterval(raceInterval);
+          const ranked = Array.from({ length: TOTAL_HORSES }, (_, i) => i + 1)
+            .sort((a, b) => positions[b - 1] - positions[a - 1]);
+          showResults(ranked.slice(0, 3), ranked);
+          raceInProgress = false;
+        }
       }, 100);
     }
 
-    async function showResults(top3, fullOrder, raceId) {
+    function showResults(top3, fullOrder) {
       resultsDiv.style.display = "block";
       podiumDiv.innerHTML = `
         🥇 Cheval n°${top3[0]}<br>
         🥈 Cheval n°${top3[1]}<br>
         🥉 Cheval n°${top3[2]}
       `;
-      raceLabel.textContent = `🏁 Course #${raceId} terminée`;
-
-      // Envoie au serveur
-      await fetch("/api/tierce/result", {
+      fetch("/api/tierce/result", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ race_id: raceId, top3, fullOrder }),
+        body: JSON.stringify({ race_id: raceNumber, top3, fullOrder, jackpot }),
       });
+
+      raceNumber++;
+      courseNumDiv.textContent = `#${raceNumber}`;
+      window.startTime = Date.now();
+      saveState();
+      startCountdown(countdownDuration);
     }
 
-    // Boucle de mise à jour régulière
-    setInterval(syncState, STATE_REFRESH);
-    syncState();
+    // Reprise automatique après refresh
+    function resumeOrStart() {
+      loadState();
+      const elapsed = (Date.now() - window.startTime) / 1000;
+
+      if (elapsed >= countdownDuration) {
+        // la course aurait dû démarrer ou être finie
+        startRace();
+      } else {
+        const remaining = Math.max(0, countdownDuration - Math.floor(elapsed));
+        startCountdown(remaining);
+      }
+
+      setInterval(updateJackpot, 60000);
+    }
+
+    createTracks();
+    resumeOrStart();
   </script>
 </body>
 </html>
