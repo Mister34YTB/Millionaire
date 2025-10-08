@@ -48,6 +48,15 @@ let tickets = [];
 let pofTickets = [];
 
 // --------------------
+// 🎯 TIERCE AUTOMATIQUE
+// --------------------
+const TIERCE_FILE = "tierce.json";
+let tierceData = {
+  jackpot: 15000,
+  races: []
+};
+
+// --------------------
 // Fonctions utilitaires
 // --------------------
 function shuffle(arr) {
@@ -125,6 +134,68 @@ function loadTickets() {
   }
 }
 
+// Charger les données existantes
+function loadTierce() {
+  if (fs.existsSync(TIERCE_FILE)) {
+    tierceData = JSON.parse(fs.readFileSync(TIERCE_FILE, "utf8"));
+  } else {
+    saveTierce();
+  }
+}
+
+function saveTierce() {
+  fs.writeFileSync(TIERCE_FILE, JSON.stringify(tierceData, null, 2));
+}
+
+// API – Dernière course
+app.get("/api/tierce/latest", (req, res) => {
+  if (!tierceData.races.length) {
+    return res.json({ message: "Aucune course pour le moment." });
+  }
+  res.json(tierceData.races[tierceData.races.length - 1]);
+});
+
+// API – Historique
+app.get("/api/tierce/results", (req, res) => {
+  res.json(tierceData.races.slice(-20).reverse()); // Les 20 dernières
+});
+
+// API – Enregistrement d’un résultat (appelé par le site)
+app.post("/api/tierce/result", (req, res) => {
+  const { top3, fullOrder } = req.body;
+  if (!Array.isArray(top3) || top3.length !== 3) {
+    return res.status(400).json({ error: "Format du top 3 invalide." });
+  }
+
+  const newRace = {
+    id: tierceData.races.length + 1,
+    top3,
+    fullOrder: fullOrder || [],
+    date: new Date().toISOString(),
+  };
+
+  tierceData.races.push(newRace);
+
+  // 🔥 Jackpot +10€/min
+  const now = Date.now();
+  if (tierceData.lastUpdate) {
+    const diffMin = Math.floor((now - tierceData.lastUpdate) / 60000);
+    tierceData.jackpot += diffMin * 10;
+  }
+  tierceData.lastUpdate = now;
+
+  saveTierce();
+  console.log(`🏁 Nouvelle course enregistrée : ${JSON.stringify(top3)}`);
+  res.json({ success: true });
+});
+
+// Servir la page du tiercé
+app.get("/tierce", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "tierce.html"));
+});
+
+// Charger au démarrage
+loadTierce();
 // --------------------
 // API Millionaire
 // --------------------

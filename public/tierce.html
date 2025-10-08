@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tiercé Automatique 🏇</title>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(180deg, #0f2027, #203a43, #2c5364);
+      color: #fff;
+      text-align: center;
+      overflow-x: hidden;
+    }
+    h1 { margin-top: 20px; }
+    .track {
+      position: relative;
+      width: 90%;
+      height: 40px;
+      margin: 12px auto;
+      background: rgba(255,255,255,0.1);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .horse {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      padding-left: 8px;
+      transition: left 0.1s;
+    }
+    .results {
+      margin-top: 40px;
+      font-size: 1.5em;
+      display: none;
+    }
+    #podium {
+      font-size: 1.3em;
+      line-height: 1.8em;
+      background: rgba(0,0,0,0.3);
+      padding: 10px;
+      border-radius: 10px;
+      display: inline-block;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🏇 Course du Tiercé Automatique</h1>
+  <div id="raceArea"></div>
+  <div class="results" id="results">
+    <h2>🏁 Résultat de la course</h2>
+    <div id="podium"></div>
+  </div>
+
+  <script>
+    const TOTAL_HORSES = 12;
+    const raceArea = document.getElementById("raceArea");
+    const resultsDiv = document.getElementById("results");
+    const podiumDiv = document.getElementById("podium");
+    let raceInProgress = false;
+
+    function createTracks() {
+      raceArea.innerHTML = "";
+      for (let i = 1; i <= TOTAL_HORSES; i++) {
+        const track = document.createElement("div");
+        track.className = "track";
+        const horse = document.createElement("div");
+        horse.className = "horse";
+        horse.textContent = `🐎 ${i}`;
+        track.appendChild(horse);
+        raceArea.appendChild(track);
+      }
+    }
+
+    function startRace() {
+      if (raceInProgress) return;
+      raceInProgress = true;
+      resultsDiv.style.display = "none";
+      podiumDiv.innerHTML = "";
+
+      createTracks();
+
+      const horses = document.querySelectorAll(".horse");
+      const speeds = Array.from({ length: TOTAL_HORSES }, () => Math.random() * 1.5 + 0.5);
+      const positions = Array(TOTAL_HORSES).fill(0);
+      const finished = [];
+
+      const raceInterval = setInterval(() => {
+        let allFinished = true;
+        horses.forEach((horse, idx) => {
+          if (positions[idx] < 90) {
+            positions[idx] += speeds[idx];
+            horse.style.left = positions[idx] + "%";
+            allFinished = false;
+          } else if (!finished.includes(idx + 1)) {
+            finished.push(idx + 1);
+          }
+        });
+
+        if (finished.length >= 3) {
+          clearInterval(raceInterval);
+          showResults(finished.slice(0, 3), finished);
+          raceInProgress = false;
+        }
+      }, 100);
+    }
+
+    function showResults(top3, fullOrder) {
+      resultsDiv.style.display = "block";
+      podiumDiv.innerHTML = `
+        🥇 Cheval n°${top3[0]}<br>
+        🥈 Cheval n°${top3[1]}<br>
+        🥉 Cheval n°${top3[2]}
+      `;
+
+      fetch("/api/tierce/result", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ top3, fullOrder }),
+      });
+    }
+
+    // Lance une course au chargement et toutes les 5 min
+    startRace();
+    setInterval(startRace, 5 * 60 * 1000);
+  </script>
+</body>
+</html>
