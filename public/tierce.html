@@ -15,22 +15,31 @@
       height: 100vh;
     }
 
-    h1 { margin-top: 20px; }
-
-    #jackpot, #courseNumber {
-      font-size: 1.5em;
-      font-weight: bold;
-      margin: 10px 0;
-      background: rgba(0, 0, 0, 0.4);
-      display: inline-block;
-      padding: 6px 20px;
-      border-radius: 10px;
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 25px;
     }
 
     #courseNumber {
-      margin-left: 10px;
+      font-size: 1.5em;
+      font-weight: bold;
       color: #00ff88;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 6px 18px;
+      border-radius: 10px;
     }
+
+    #jackpot {
+      font-size: 1.5em;
+      font-weight: bold;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 6px 18px;
+      border-radius: 10px;
+    }
+
+    h1 { margin-top: 10px; }
 
     .track {
       position: relative;
@@ -87,11 +96,12 @@
   </style>
 </head>
 <body>
-  <h1>🏇 Course du Tiercé Automatique</h1>
-  <div>
-    <div id="jackpot">💰 Jackpot : 15 000 €</div>
+  <header>
     <div id="courseNumber">#1</div>
-  </div>
+    <div id="jackpot">💰 Jackpot : 15 000 €</div>
+  </header>
+
+  <h1>🏇 Course du Tiercé Automatique</h1>
   <div id="raceArea"></div>
 
   <div id="countdown"></div>
@@ -111,12 +121,13 @@
     const courseNumDiv = document.getElementById("courseNumber");
 
     let jackpot = 15000;
+    let raceNumber = 1;
     let raceInProgress = false;
     let countdownTimer;
-    let raceNumber = 1;
-    const raceDuration = 30; // secondes
+    const raceDuration = 30; // durée d'une course
     const countdownDuration = 5 * 60; // 5 minutes
 
+    // ---- Sauvegarde du chrono, jackpot et course ----
     function saveState() {
       localStorage.setItem("tierce_state", JSON.stringify({
         startTime: window.startTime,
@@ -135,16 +146,21 @@
       } else {
         window.startTime = Date.now();
       }
+      updateDisplay();
+    }
+
+    function updateDisplay() {
       jackpotDiv.textContent = `💰 Jackpot : ${jackpot.toLocaleString('fr-FR')} €`;
       courseNumDiv.textContent = `#${raceNumber}`;
     }
 
     function updateJackpot() {
       jackpot += 10;
-      jackpotDiv.textContent = `💰 Jackpot : ${jackpot.toLocaleString('fr-FR')} €`;
+      updateDisplay();
       saveState();
     }
 
+    // ---- Course ----
     function createTracks() {
       raceArea.innerHTML = "";
       for (let i = 1; i <= TOTAL_HORSES; i++) {
@@ -158,10 +174,15 @@
       }
     }
 
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${m}:${s.toString().padStart(2, '0')}`;
+    }
+
     function startCountdown(timeLeft) {
       countdownDiv.style.display = "block";
       countdownDiv.textContent = formatTime(timeLeft);
-
       countdownTimer = setInterval(() => {
         timeLeft--;
         countdownDiv.textContent = formatTime(timeLeft);
@@ -171,12 +192,6 @@
           startRace();
         }
       }, 1000);
-    }
-
-    function formatTime(seconds) {
-      const m = Math.floor(seconds / 60);
-      const s = seconds % 60;
-      return `${m}:${s.toString().padStart(2, '0')}`;
     }
 
     function startRace() {
@@ -219,6 +234,7 @@
         🥈 Cheval n°${top3[1]}<br>
         🥉 Cheval n°${top3[2]}
       `;
+
       fetch("/api/tierce/result", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -226,19 +242,18 @@
       });
 
       raceNumber++;
-      courseNumDiv.textContent = `#${raceNumber}`;
+      updateDisplay();
       window.startTime = Date.now();
       saveState();
       startCountdown(countdownDuration);
     }
 
-    // Reprise automatique après refresh
+    // ---- Reprise après refresh ----
     function resumeOrStart() {
       loadState();
       const elapsed = (Date.now() - window.startTime) / 1000;
 
       if (elapsed >= countdownDuration) {
-        // la course aurait dû démarrer ou être finie
         startRace();
       } else {
         const remaining = Math.max(0, countdownDuration - Math.floor(elapsed));
