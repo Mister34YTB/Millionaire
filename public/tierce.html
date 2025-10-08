@@ -187,34 +187,53 @@
 
     // Lancer la course
     function startRace(raceId, jackpot) {
-      if (raceInProgress) return;
-      raceInProgress = true;
-      resultsDiv.style.display = "none";
-      podiumDiv.innerHTML = "";
-      createTracks();
+  if (raceInProgress) return;
+  raceInProgress = true;
+  resultsDiv.style.display = "none";
+  podiumDiv.innerHTML = "";
+  createTracks();
 
-      const horses = document.querySelectorAll(".horse");
-      const positions = Array(TOTAL_HORSES).fill(0);
-      const startTime = Date.now();
+  const horses = document.querySelectorAll(".horse");
 
-      const raceInterval = setInterval(() => {
-        const elapsed = (Date.now() - startTime) / 1000;
-        const progress = Math.min(elapsed / 30, 1);
+  // Chaque cheval a une vitesse et une accélération différentes
+  const speeds = Array.from({ length: TOTAL_HORSES }, () => Math.random() * 0.8 + 0.3);
+  const accelerations = Array.from({ length: TOTAL_HORSES }, () => (Math.random() - 0.5) * 0.02);
+  const positions = Array(TOTAL_HORSES).fill(0);
 
-        horses.forEach((horse, idx) => {
-          positions[idx] = progress * 90 + Math.random() * 1;
-          horse.style.left = positions[idx] + "%";
-        });
+  const raceInterval = setInterval(() => {
+    let allFinished = true;
 
-        if (progress >= 1) {
-          clearInterval(raceInterval);
-          const ranked = Array.from({ length: TOTAL_HORSES }, (_, i) => i + 1)
-            .sort((a, b) => positions[b - 1] - positions[a - 1]);
-          showResults(ranked.slice(0, 3), ranked, raceId, jackpot);
-          raceInProgress = false;
-        }
-      }, 100);
+    for (let i = 0; i < TOTAL_HORSES; i++) {
+      if (positions[i] < 90) {
+        allFinished = false;
+
+        // Variation aléatoire de vitesse (boosts/fatigue)
+        speeds[i] += accelerations[i] + (Math.random() - 0.5) * 0.05;
+
+        // Limiter la vitesse entre 0.2 et 1.5
+        speeds[i] = Math.min(Math.max(speeds[i], 0.2), 1.5);
+
+        positions[i] += speeds[i];
+        horses[i].style.left = positions[i] + "%";
+
+        // Simuler une accélération naturelle
+        accelerations[i] += (Math.random() - 0.5) * 0.01;
+      }
     }
+
+    if (allFinished) {
+      clearInterval(raceInterval);
+
+      // Classement basé sur la position finale
+      const ranked = Array.from({ length: TOTAL_HORSES }, (_, i) => i + 1)
+        .sort((a, b) => positions[b - 1] - positions[a - 1]);
+
+      showResults(ranked.slice(0, 3), ranked, raceId, jackpot);
+      raceInProgress = false;
+    }
+  }, 200);
+}
+
 
     // Afficher le résultat + envoyer au serveur
     function showResults(top3, fullOrder, raceId, jackpot) {
