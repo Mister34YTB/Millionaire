@@ -193,9 +193,24 @@ app.post("/api/tierce/result", (req, res) => {
   res.json({ success: true });
 });
 
+// ✅ Réinitialisation complète du Tiercé (appelée par !resetT)
+app.post("/api/tierce/reset", (req, res) => {
+  tierceState = {
+    race_id: 1,
+    jackpot: 15000,
+    startTime: Date.now(),
+    lastResult: null,
+  };
+  saveTierce();
+  console.log("♻️ Tiercé réinitialisé via API !");
+  res.json({ success: true, message: "Tiercé réinitialisé (jackpot 15 000 €)" });
+});
+
 // ============================================================
 // 🎟️ ROUTES API MILLIONNAIRE
 // ============================================================
+
+// Achat de tickets
 app.get("/api/buyTicket", (req, res) => {
   const count = parseInt(req.query.count) || 1;
   let available = tickets.filter((t) => !t.sold);
@@ -218,9 +233,28 @@ app.get("/api/buyTicket", (req, res) => {
   res.json({ tickets: bought });
 });
 
+// Vérification d’un ticket
+app.get("/api/checkTicket", (req, res) => {
+  const { id, code } = req.query;
+  if (!id || !code) return res.status(400).json({ error: "Paramètres manquants." });
+
+  const ticket = tickets.find(t => t.id === id && t.code === code);
+  if (!ticket) return res.status(404).json({ error: "Ticket introuvable." });
+
+  if (ticket.used) {
+    return res.json({ id, gain: ticket.gain, status: "Déjà utilisé" });
+  }
+
+  ticket.used = true;
+  fs.writeFileSync(TICKET_FILE, JSON.stringify(tickets, null, 2));
+  res.json({ id, gain: ticket.gain, status: "Valide" });
+});
+
 // ============================================================
 // 🪙 ROUTES API PILE OU FACE
 // ============================================================
+
+// Achat
 app.get("/api/buyPOF", (req, res) => {
   const count = parseInt(req.query.count) || 1;
   let available = pofTickets.filter((t) => !t.sold);
@@ -241,6 +275,23 @@ app.get("/api/buyPOF", (req, res) => {
 
   fs.writeFileSync(POF_FILE, JSON.stringify(pofTickets, null, 2));
   res.json({ tickets: bought });
+});
+
+// Vérification Pile ou Face
+app.get("/api/checkPOF", (req, res) => {
+  const { id, code } = req.query;
+  if (!id || !code) return res.status(400).json({ error: "Paramètres manquants." });
+
+  const ticket = pofTickets.find(t => t.id === id && t.code === code);
+  if (!ticket) return res.status(404).json({ error: "Ticket introuvable." });
+
+  if (ticket.used) {
+    return res.json({ id, gain: ticket.gain, face: ticket.revealed, status: "Déjà utilisé" });
+  }
+
+  ticket.used = true;
+  fs.writeFileSync(POF_FILE, JSON.stringify(pofTickets, null, 2));
+  res.json({ id, gain: ticket.gain, face: ticket.revealed, status: "Valide" });
 });
 
 // ============================================================
