@@ -17,7 +17,7 @@
 
     h1 { margin-top: 20px; }
 
-    #jackpot {
+    #jackpot, #courseNumber {
       font-size: 1.5em;
       font-weight: bold;
       margin: 10px 0;
@@ -25,6 +25,11 @@
       display: inline-block;
       padding: 6px 20px;
       border-radius: 10px;
+    }
+
+    #courseNumber {
+      margin-left: 10px;
+      color: #00ff88;
     }
 
     .track {
@@ -83,7 +88,10 @@
 </head>
 <body>
   <h1>🏇 Course du Tiercé Automatique</h1>
-  <div id="jackpot">💰 Jackpot : 15 000 €</div>
+  <div>
+    <div id="jackpot">💰 Jackpot : 15 000 €</div>
+    <div id="courseNumber">#1</div>
+  </div>
   <div id="raceArea"></div>
 
   <div id="countdown"></div>
@@ -100,14 +108,41 @@
     const podiumDiv = document.getElementById("podium");
     const jackpotDiv = document.getElementById("jackpot");
     const countdownDiv = document.getElementById("countdown");
+    const courseNumDiv = document.getElementById("courseNumber");
 
     let jackpot = 15000;
     let raceInProgress = false;
     let countdownTimer;
+    let raceNumber = 1;
+    const raceDuration = 30; // secondes
+    const countdownDuration = 5 * 60; // 5 minutes
+
+    function saveState() {
+      localStorage.setItem("tierce_state", JSON.stringify({
+        startTime: window.startTime,
+        jackpot,
+        raceNumber
+      }));
+    }
+
+    function loadState() {
+      const saved = localStorage.getItem("tierce_state");
+      if (saved) {
+        const data = JSON.parse(saved);
+        jackpot = data.jackpot || 15000;
+        raceNumber = data.raceNumber || 1;
+        window.startTime = data.startTime || Date.now();
+      } else {
+        window.startTime = Date.now();
+      }
+      jackpotDiv.textContent = `💰 Jackpot : ${jackpot.toLocaleString('fr-FR')} €`;
+      courseNumDiv.textContent = `#${raceNumber}`;
+    }
 
     function updateJackpot() {
-      jackpot += 10; // +10€ par minute
+      jackpot += 10;
       jackpotDiv.textContent = `💰 Jackpot : ${jackpot.toLocaleString('fr-FR')} €`;
+      saveState();
     }
 
     function createTracks() {
@@ -123,8 +158,7 @@
       }
     }
 
-    function startCountdown(duration) {
-      let timeLeft = duration;
+    function startCountdown(timeLeft) {
       countdownDiv.style.display = "block";
       countdownDiv.textContent = formatTime(timeLeft);
 
@@ -155,21 +189,16 @@
       const horses = document.querySelectorAll(".horse");
       const speeds = Array.from({ length: TOTAL_HORSES }, () => Math.random() * 0.7 + 0.3);
       const positions = Array(TOTAL_HORSES).fill(0);
-      const finished = [];
 
       const startTime = Date.now();
       const raceInterval = setInterval(() => {
         const elapsed = (Date.now() - startTime) / 1000;
-        const progress = Math.min(elapsed / 30, 1); // durée 30 secondes
-        let allFinished = true;
+        const progress = Math.min(elapsed / raceDuration, 1);
 
         horses.forEach((horse, idx) => {
           if (positions[idx] < 90) {
-            positions[idx] = progress * 90 + Math.random() * 1; // un peu de variation
+            positions[idx] = progress * 90 + Math.random() * 1;
             horse.style.left = positions[idx] + "%";
-            allFinished = false;
-          } else if (!finished.includes(idx + 1)) {
-            finished.push(idx + 1);
           }
         });
 
@@ -193,21 +222,34 @@
       fetch("/api/tierce/result", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ top3, fullOrder, jackpot }),
+        body: JSON.stringify({ race_id: raceNumber, top3, fullOrder, jackpot }),
       });
+
+      raceNumber++;
+      courseNumDiv.textContent = `#${raceNumber}`;
+      window.startTime = Date.now();
+      saveState();
+      startCountdown(countdownDuration);
     }
 
-    // Lancer une course toutes les 5 minutes avec timer
-    function scheduleRace() {
-      createTracks();
-      startCountdown(5 * 60); // 5 minutes avant départ
-      setInterval(() => {
-        updateJackpot();
-      }, 60000); // jackpot +10€/min
+    // Reprise automatique après refresh
+    function resumeOrStart() {
+      loadState();
+      const elapsed = (Date.now() - window.startTime) / 1000;
+
+      if (elapsed >= countdownDuration) {
+        // la course aurait dû démarrer ou être finie
+        startRace();
+      } else {
+        const remaining = Math.max(0, countdownDuration - Math.floor(elapsed));
+        startCountdown(remaining);
+      }
+
+      setInterval(updateJackpot, 60000);
     }
 
-    // Initialisation
-    scheduleRace();
+    createTracks();
+    resumeOrStart();
   </script>
 </body>
 </html>
