@@ -1,7 +1,3 @@
-// ============================================================
-// 🎰 SERVEUR CASINO COMPLET (Millionnaire + Pile ou Face + Tiercé)
-// ============================================================
-
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
@@ -13,12 +9,13 @@ const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 app.use(cors());
-app.use(express.static("public")); // Sert les fichiers HTML, CSS et JS
+app.use(express.static("public")); // sert les fichiers HTML/CSS/JS
 
-// ============================================================
-// 💰 MILLIONNAIRE
-// ============================================================
+// --------------------
+// Millionaire
+// --------------------
 const TICKET_FILE = "tickets.json";
+
 const distribution = [
   { gain: "⭐", count: 5 },
   { gain: "50K€", count: 2 },
@@ -28,13 +25,12 @@ const distribution = [
   { gain: "100€", count: 80 },
   { gain: "50€", count: 150 },
   { gain: "10€", count: 163 },
-  { gain: "0", count: 525 },
+  { gain: "0", count: 525 }
 ];
-let tickets = [];
 
-// ============================================================
-// 🪙 PILE OU FACE
-// ============================================================
+// --------------------
+// Pile ou Face
+// --------------------
 const POF_FILE = "tickets_pof.json";
 const POF_DISTRIBUTION = [
   { gain: "5000€", count: 3 },
@@ -43,50 +39,17 @@ const POF_DISTRIBUTION = [
   { gain: "15€", count: 150 },
   { gain: "5€", count: 300 },
   { gain: "2€", count: 400 },
-  { gain: "1€", count: 1000 },
+  { gain: "1€", count: 1000 }
 ];
-const WIN_PROB = 1 / 8;
+
+const WIN_PROB = 1 / 8; // ✅ 1 chance sur 8 de gagner
+
+let tickets = [];
 let pofTickets = [];
 
-// ============================================================
-// 🏇 TIERCÉ AUTOMATIQUE PERSISTANT
-// ============================================================
-const TIERCE_FILE = "tierce.json";
-let tierceState = {
-  race_id: 1,
-  jackpot: 15000,
-  startTime: Date.now(),
-  lastResult: null,
-};
-
-// Charger les données Tiercé sauvegardées
-if (fs.existsSync(TIERCE_FILE)) {
-  try {
-    const data = JSON.parse(fs.readFileSync(TIERCE_FILE, "utf8"));
-    tierceState = { ...tierceState, ...data };
-  } catch (err) {
-    console.error("⚠️ Erreur de lecture du fichier tierce.json :", err);
-  }
-}
-
-// ============================================================
-// 🔧 FONCTIONS UTILITAIRES
-// ============================================================
-function saveTierce() {
-  fs.writeFileSync(TIERCE_FILE, JSON.stringify(tierceState, null, 2));
-}
-
-function currentJackpot() {
-  const elapsedMinutes = Math.floor((Date.now() - tierceState.startTime) / 60000);
-  return tierceState.jackpot + elapsedMinutes * 10;
-}
-
-function timeRemaining() {
-  const total = 5 * 60 * 1000; // 5 min
-  const elapsed = Date.now() - tierceState.startTime;
-  return Math.max(0, total - elapsed);
-}
-
+// --------------------
+// Fonctions utilitaires
+// --------------------
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -96,127 +59,82 @@ function shuffle(arr) {
 
 function regenerateTickets() {
   let pool = [];
-  distribution.forEach((d) => {
+  distribution.forEach(d => {
     for (let i = 0; i < d.count; i++) pool.push(d.gain);
   });
   shuffle(pool);
-  tickets = pool.map((gain, i) => ({
-    id: String(i + 1).padStart(3, "0"),
+
+  tickets = pool.map((gain, index) => ({
+    id: String(index + 1).padStart(3, "0"),
     gain,
     sold: false,
     used: false,
-    code: null,
+    code: null
   }));
+
   fs.writeFileSync(TICKET_FILE, JSON.stringify(tickets, null, 2));
 }
 
 function regeneratePOFTickets() {
   pofTickets = [];
+
   for (let i = 0; i < 5000; i++) {
-    const type = Math.random() < 0.5 ? "PILE" : "FACE";
+    const ticketType = Math.random() < 0.5 ? "PILE" : "FACE";
     let revealed, gain = "0";
+
     if (Math.random() < WIN_PROB) {
-      revealed = type;
+      // ✅ Ticket gagnant
+      revealed = ticketType;
       const pool = [];
-      POF_DISTRIBUTION.forEach((d) => {
+      POF_DISTRIBUTION.forEach(d => {
         for (let j = 0; j < d.count; j++) pool.push(d.gain);
       });
       shuffle(pool);
       gain = pool[Math.floor(Math.random() * pool.length)];
     } else {
-      revealed = type === "PILE" ? "FACE" : "PILE";
+      // ❌ Ticket perdant
+      revealed = ticketType === "PILE" ? "FACE" : "PILE";
+      gain = "0";
     }
+
     pofTickets.push({
       id: String(i + 1).padStart(4, "0"),
-      type,
+      type: ticketType,
       revealed,
       gain,
       sold: false,
       used: false,
-      code: null,
+      code: null
     });
   }
+
   fs.writeFileSync(POF_FILE, JSON.stringify(pofTickets, null, 2));
 }
 
 function loadTickets() {
-  if (fs.existsSync(TICKET_FILE)) tickets = JSON.parse(fs.readFileSync(TICKET_FILE, "utf8"));
-  else regenerateTickets();
+  if (fs.existsSync(TICKET_FILE)) {
+    tickets = JSON.parse(fs.readFileSync(TICKET_FILE, "utf8"));
+  } else {
+    regenerateTickets();
+  }
 
-  if (fs.existsSync(POF_FILE)) pofTickets = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
-  else regeneratePOFTickets();
+  if (fs.existsSync(POF_FILE)) {
+    pofTickets = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
+  } else {
+    regeneratePOFTickets();
+  }
 }
 
-// ============================================================
-// 🧭 ROUTES API TIERCÉ
-// ============================================================
-
-// ✅ État du Tiercé (site)
-app.get("/api/tierce/state", (req, res) => {
-  res.json({
-    race_id: tierceState.race_id,
-    jackpot: currentJackpot(),
-    time_remaining: Math.floor(timeRemaining() / 1000),
-  });
-});
-
-// ✅ Dernier résultat (bot)
-app.get("/api/tierce/latest", (req, res) => {
-  if (!tierceState.lastResult) {
-    return res.json({ message: "Aucun résultat disponible." });
-  }
-  res.json(tierceState.lastResult);
-});
-
-// ✅ Fin d’une course (site)
-app.post("/api/tierce/result", (req, res) => {
-  const { top3, fullOrder } = req.body;
-  if (!Array.isArray(top3) || top3.length !== 3) {
-    return res.status(400).json({ error: "Top3 invalide." });
-  }
-
-  const result = {
-    race_id: tierceState.race_id,
-    top3,
-    fullOrder: fullOrder || [],
-    jackpot: currentJackpot(),
-    timestamp: Date.now(),
-  };
-
-  tierceState.lastResult = result;
-  tierceState.race_id += 1;
-  tierceState.jackpot = currentJackpot();
-  tierceState.startTime = Date.now();
-  saveTierce();
-
-  console.log(`🏁 Course #${result.race_id} terminée → ${top3.join(", ")}`);
-  res.json({ success: true });
-});
-
-// ✅ Réinitialisation complète du Tiercé (appelée par !resetT)
-app.post("/api/tierce/reset", (req, res) => {
-  tierceState = {
-    race_id: 1,
-    jackpot: 15000,
-    startTime: Date.now(),
-    lastResult: null,
-  };
-  saveTierce();
-  console.log("♻️ Tiercé réinitialisé via API !");
-  res.json({ success: true, message: "Tiercé réinitialisé (jackpot 15 000 €)" });
-});
-
-// ============================================================
-// 🎟️ ROUTES API MILLIONNAIRE
-// ============================================================
-
-// Achat de tickets
+// --------------------
+// API Millionaire
+// --------------------
 app.get("/api/buyTicket", (req, res) => {
   const count = parseInt(req.query.count) || 1;
-  let available = tickets.filter((t) => !t.sold);
+  let available = tickets.filter(t => !t.sold);
+
   if (available.length < count) {
     regenerateTickets();
-    available = tickets.filter((t) => !t.sold);
+    available = tickets.filter(t => !t.sold);
   }
 
   const bought = [];
@@ -233,34 +151,24 @@ app.get("/api/buyTicket", (req, res) => {
   res.json({ tickets: bought });
 });
 
-// Vérification d’un ticket
-app.get("/api/checkTicket", (req, res) => {
-  const { id, code } = req.query;
-  if (!id || !code) return res.status(400).json({ error: "Paramètres manquants." });
-
-  const ticket = tickets.find(t => t.id === id && t.code === code);
-  if (!ticket) return res.status(404).json({ error: "Ticket introuvable." });
-
-  if (ticket.used) {
-    return res.json({ id, gain: ticket.gain, status: "Déjà utilisé" });
-  }
-
-  ticket.used = true;
-  fs.writeFileSync(TICKET_FILE, JSON.stringify(tickets, null, 2));
-  res.json({ id, gain: ticket.gain, status: "Valide" });
+app.get("/api/ticket/:id", (req, res) => {
+  const { code } = req.query;
+  const t = tickets.find(tt => tt.id === req.params.id);
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+  if (!code || t.code !== code) return res.status(403).json({ error: "Code invalide" });
+  res.json(t);
 });
 
-// ============================================================
-// 🪙 ROUTES API PILE OU FACE
-// ============================================================
-
-// Achat
+// --------------------
+// API Pile ou Face
+// --------------------
 app.get("/api/buyPOF", (req, res) => {
   const count = parseInt(req.query.count) || 1;
-  let available = pofTickets.filter((t) => !t.sold);
+  let available = pofTickets.filter(t => !t.sold);
+
   if (available.length < count) {
     regeneratePOFTickets();
-    available = pofTickets.filter((t) => !t.sold);
+    available = pofTickets.filter(t => !t.sold);
   }
 
   const bought = [];
@@ -277,38 +185,108 @@ app.get("/api/buyPOF", (req, res) => {
   res.json({ tickets: bought });
 });
 
-// Vérification Pile ou Face
-app.get("/api/checkPOF", (req, res) => {
-  const { id, code } = req.query;
-  if (!id || !code) return res.status(400).json({ error: "Paramètres manquants." });
+app.get("/api/pof/ticket/:id", (req, res) => {
+  const { code } = req.query;
+  const t = pofTickets.find(tt => tt.id === req.params.id);
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+  if (!code || t.code !== code) return res.status(403).json({ error: "Code invalide" });
 
-  const ticket = pofTickets.find(t => t.id === id && t.code === code);
-  if (!ticket) return res.status(404).json({ error: "Ticket introuvable." });
-
-  if (ticket.used) {
-    return res.json({ id, gain: ticket.gain, face: ticket.revealed, status: "Déjà utilisé" });
+  let realGain = "PERDU";
+  if (t.type === t.revealed && t.gain !== "0") {
+    realGain = t.gain;
   }
 
-  ticket.used = true;
+  res.json({
+    id: t.id,
+    type: t.type,
+    revealed: t.revealed,
+    gain: realGain,
+    sold: t.sold,
+    used: t.used,
+    code: t.code
+  });
+});
+
+app.post("/api/pof/use/:id", (req, res) => {
+  const { code } = req.body;
+  const t = pofTickets.find(tt => tt.id === req.params.id);
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+  if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
+
+  t.used = true;
   fs.writeFileSync(POF_FILE, JSON.stringify(pofTickets, null, 2));
-  res.json({ id, gain: ticket.gain, face: ticket.revealed, status: "Valide" });
+  res.json({ success: true, message: "Ticket marqué comme utilisé" });
 });
 
-// ============================================================
-// 🌐 PAGES WEB
-// ============================================================
-app.get("/tierce", (req, res) => res.sendFile(path.join(__dirname, "public", "tierce.html")));
-app.get("/ticket", (req, res) => res.sendFile(path.join(__dirname, "public", "ticket.html")));
-app.get("/pof", (req, res) => res.sendFile(path.join(__dirname, "public", "pof.html")));
-app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
-app.get("/", (req, res) => res.redirect("/ticket"));
+// --------------------
+// Pages web
+// --------------------
+app.get("/ticket", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "ticket.html"));
+});
 
-// ============================================================
-// 🚀 LANCEMENT DU SERVEUR
-// ============================================================
+app.get("/pof", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "pof.html"));
+});
+
+app.get("/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin.html"));
+});
+
+app.get("/", (req, res) => {
+  res.redirect("/ticket");
+});
+
+// --------------------
+// Admin
+// --------------------
+app.get("/api/admin/checkTicket/:id", (req, res) => {
+  const t = tickets.find(tt => tt.id === req.params.id);
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+  res.json(t);
+});
+
+app.get("/api/admin/checkPOF/:id", (req, res) => {
+  const t = pofTickets.find(tt => tt.id === req.params.id);
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+
+  let realGain = "PERDU";
+  if (t.type === t.revealed && t.gain !== "0") {
+    realGain = t.gain;
+  }
+
+  res.json({
+    id: t.id,
+    type: t.type,
+    revealed: t.revealed,
+    gain: realGain,
+    sold: t.sold,
+    used: t.used,
+    code: t.code
+  });
+});
+
+// ✅ Reset les deux
+app.post("/api/admin/reset", (req, res) => {
+  regenerateTickets();
+  regeneratePOFTickets();
+  res.json({ success: true, message: "🎟️ Inventaire réinitialisé." });
+});
+
+// ✅ Reset uniquement Millionnaire
+app.post("/api/admin/resetMillionaire", (req, res) => {
+  regenerateTickets();
+  res.json({ success: true, message: "🎟️ Tickets Millionnaire réinitialisés." });
+});
+
+// ✅ Reset uniquement Pile ou Face
+app.post("/api/admin/resetPOF", (req, res) => {
+  regeneratePOFTickets();
+  res.json({ success: true, message: "🪙 Tickets Pile ou Face réinitialisés." });
+});
+
+// --------------------
 loadTickets();
-saveTierce();
-
-app.listen(PORT, () => {
-  console.log(`✅ Serveur lancé sur http://localhost:${PORT}`);
-});
+app.listen(PORT, () =>
+  console.log(`✅ Serveur lancé sur http://localhost:${PORT}`)
+);
