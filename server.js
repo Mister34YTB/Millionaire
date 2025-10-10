@@ -285,6 +285,26 @@ app.post("/api/admin/resetPOF", (req, res) => {
   res.json({ success: true, message: "🪙 Tickets Pile ou Face réinitialisés." });
 });
 
+// ✅ Vérifie les stocks restants
+app.get("/api/admin/stock", (req, res) => {
+  const game = req.query.game;
+
+  if (game === "ticket") {
+    const total = tickets.length;
+    const used = tickets.filter(t => t.used).length;
+    const remaining = total - used;
+    return res.json({ total, used, remaining });
+  } else if (game === "pof") {
+    const total = pofTickets.length;
+    const used = pofTickets.filter(t => t.used).length;
+    const remaining = total - used;
+    return res.json({ total, used, remaining });
+  } else {
+    return res.status(400).json({ error: "Jeu inconnu" });
+  }
+});
+
+
 // --------------------
 loadTickets();
 app.listen(PORT, () =>
