@@ -285,22 +285,29 @@ app.post("/api/admin/resetPOF", (req, res) => {
   res.json({ success: true, message: "🪙 Tickets Pile ou Face réinitialisés." });
 });
 
-// ✅ Vérifie les stocks restants
+// ✅ Vérifie les stocks restants en lisant les fichiers directement
 app.get("/api/admin/stock", (req, res) => {
   const game = req.query.game;
 
-  if (game === "ticket") {
-    const total = tickets.length;
-    const used = tickets.filter(t => t.used).length;
-    const remaining = total - used;
-    return res.json({ total, used, remaining });
-  } else if (game === "pof") {
-    const total = pofTickets.length;
-    const used = pofTickets.filter(t => t.used).length;
-    const remaining = total - used;
-    return res.json({ total, used, remaining });
-  } else {
-    return res.status(400).json({ error: "Jeu inconnu" });
+  try {
+    if (game === "ticket") {
+      const ticketsData = JSON.parse(fs.readFileSync(TICKET_FILE, "utf8"));
+      const total = ticketsData.length;
+      const used = ticketsData.filter(t => t.used).length;
+      const remaining = total - used;
+      return res.json({ total, used, remaining });
+    } else if (game === "pof") {
+      const pofData = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
+      const total = pofData.length;
+      const used = pofData.filter(t => t.used).length;
+      const remaining = total - used;
+      return res.json({ total, used, remaining });
+    } else {
+      return res.status(400).json({ error: "Jeu inconnu" });
+    }
+  } catch (err) {
+    console.error("Erreur lecture stock :", err);
+    return res.status(500).json({ error: "Erreur lecture des fichiers." });
   }
 });
 
