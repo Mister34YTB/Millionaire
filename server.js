@@ -130,7 +130,8 @@ function loadTickets() {
 // --------------------
 app.get("/api/buyTicket", (req, res) => {
   const count = parseInt(req.query.count) || 1;
-  let available = tickets.filter(t => !t.sold);
+tickets = JSON.parse(fs.readFileSync(TICKET_FILE, "utf8"));
+let available = tickets.filter(t => !t.sold);
 
   if (available.length < count) {
     regenerateTickets();
@@ -164,7 +165,8 @@ app.get("/api/ticket/:id", (req, res) => {
 // --------------------
 app.get("/api/buyPOF", (req, res) => {
   const count = parseInt(req.query.count) || 1;
-  let available = pofTickets.filter(t => !t.sold);
+pofTickets = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
+let available = pofTickets.filter(t => !t.sold);
 
   if (available.length < count) {
     regeneratePOFTickets();
