@@ -258,9 +258,8 @@
 
   function setupScratch(data) {
     const canvases = document.querySelectorAll(".machine canvas");
-    let totalAreas = canvases.length;
-    let scratchedCount = 0;
-    let fullyScratched = false;
+    let fullyScratchedCount = 0;
+    let destroyed = false;
 
     canvases.forEach((canvas) => {
       const ctx = canvas.getContext("2d");
@@ -269,32 +268,48 @@
       ctx.fillStyle = "#777";
       ctx.fillRect(0, 0, w, h);
 
-      let scratchedPixels = 0;
-      const totalPixels = w * h;
+      const pixelData = ctx.getImageData(0, 0, w, h);
+      const totalPixels = pixelData.data.length / 4;
+      let clearedPixels = 0;
+      let lastCheck = 0;
+      let scratchedEnough = false;
 
-      let isDrawing = false;
       const scratch = (x, y) => {
-        if (fullyScratched) return;
+        if (destroyed) return;
         ctx.globalCompositeOperation = "destination-out";
         ctx.beginPath();
-        ctx.arc(x, y, 20, 0, Math.PI * 2);
+        ctx.arc(x, y, 18, 0, Math.PI * 2);
         ctx.fill();
-        scratchedPixels += 1250;
+      };
 
-        if (scratchedPixels / totalPixels >= 0.95) {
-          scratchedCount++;
-          scratchedPixels = totalPixels; // évite de recompter
-          if (scratchedCount >= totalAreas && !fullyScratched) {
-            fullyScratched = true;
+      const checkProgress = () => {
+        if (scratchedEnough) return;
+
+        const imgData = ctx.getImageData(0, 0, w, h);
+        let count = 0;
+        for (let i = 3; i < imgData.data.length; i += 4) {
+          if (imgData.data[i] === 0) count++;
+        }
+        const progress = count / totalPixels;
+
+        if (progress >= 0.95) {
+          scratchedEnough = true;
+          fullyScratchedCount++;
+          if (fullyScratchedCount === canvases.length && !destroyed) {
+            destroyed = true;
             revealResult(data);
           }
         }
       };
 
+      let isDrawing = false;
       canvas.addEventListener("mousedown", () => (isDrawing = true));
-      canvas.addEventListener("mouseup", () => (isDrawing = false));
+      canvas.addEventListener("mouseup", () => {
+        isDrawing = false;
+        checkProgress();
+      });
       canvas.addEventListener("mousemove", (e) => {
-        if (!isDrawing || fullyScratched) return;
+        if (!isDrawing || destroyed) return;
         const rect = canvas.getBoundingClientRect();
         scratch(e.clientX - rect.left, e.clientY - rect.top);
       });
@@ -307,7 +322,7 @@
         ? `🎉 Félicitations ! Vous gagnez ${data.gain.replace(/[^\d€]/g, "")} !`
         : "😢 Perdu, retentez votre chance !";
 
-    // ✅ Marque comme utilisé côté serveur après 5 secondes
+    // ✅ Attendre 5 secondes avant destruction et marquage
     setTimeout(async () => {
       await fetch(useURL, {
         method: "POST",
@@ -315,7 +330,6 @@
         body: JSON.stringify({ code })
       });
 
-      // ✅ Animation de destruction après 5s
       ticketEl.classList.add("destroyed");
       setTimeout(() => {
         ticketEl.innerHTML = `
@@ -331,5 +345,6 @@
 
   loadTicket();
 </script>
+
 </body>
 </html>
