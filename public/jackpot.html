@@ -3,75 +3,100 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>🎰 JACKPOT - GDJ</title>
+  <title>🎰 Jackpot - GDJ</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Arial+Black&display=swap');
 
     body {
       margin: 0;
       background: #000;
+      color: #fff;
       font-family: "Arial Black", sans-serif;
-      overflow: hidden;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
+      overflow: hidden;
+    }
+
+    .container {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 30px;
     }
 
     .ticket {
       position: relative;
       width: 520px;
-      height: 680px;
+      height: 700px;
+      background: #000;
       border-radius: 20px;
-      background: radial-gradient(circle at center, #00ff66 0%, #003311 80%);
       box-shadow: 0 0 25px #00ff66, inset 0 0 20px #00ff66;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      padding-top: 80px;
-    }
-
-    .logo-jackpot {
-      position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 200px;
+      padding-top: 100px;
     }
 
     .logo-gdj {
       position: absolute;
-      top: 25px;
-      left: 25px;
-      width: 60px;
+      top: 20px;
+      left: 20px;
+      width: 70px;
     }
 
-    .machine {
+    .logo-jackpot {
+      position: absolute;
+      top: 25px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 220px;
+    }
+
+    .price-circle {
+      position: absolute;
+      top: 25px;
+      right: 25px;
+      background: #fff;
+      color: purple;
+      font-size: 22px;
+      font-weight: bold;
+      border-radius: 50%;
+      width: 70px;
+      height: 70px;
       display: flex;
       justify-content: center;
       align-items: center;
-      margin-top: 80px;
+      box-shadow: 0 0 10px #fff;
+    }
+
+    .machine-area {
+      margin-top: 70px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       gap: 20px;
     }
 
-    .reel {
-      width: 110px;
-      height: 140px;
-      background: #222;
+    .machine {
+      background: #111;
       border-radius: 15px;
       border: 3px solid #00ff66;
-      box-shadow: 0 0 15px #00ff66;
+      box-shadow: 0 0 20px #00ff66;
+      width: 130px;
+      height: 350px;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
+      justify-content: space-evenly;
       align-items: center;
-      overflow: hidden;
       position: relative;
+      overflow: hidden;
     }
 
     .symbol {
       font-size: 60px;
-      color: #fff;
       text-shadow: 0 0 10px #00ff66;
     }
 
@@ -81,63 +106,106 @@
       left: 0;
       width: 100%;
       height: 100%;
-      border-radius: 15px;
       cursor: pointer;
+      border-radius: 15px;
     }
 
     .bottom-info {
       position: absolute;
-      bottom: 15px;
-      left: 0;
+      bottom: 10px;
       width: 100%;
-      padding: 0 25px;
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      font-size: 18px;
-      color: #fff;
-      text-shadow: 0 0 3px #000;
+      padding: 0 20px;
     }
 
     .ticket-id {
       color: black;
       -webkit-text-stroke: 1px white;
-    }
-
-    .price {
       font-weight: bold;
     }
 
     .message {
-      position: absolute;
-      bottom: 80px;
+      text-align: center;
+      margin-top: 25px;
+      font-size: 22px;
       color: #fff;
-      font-size: 20px;
       text-shadow: 0 0 10px #00ff66;
     }
 
-    .disabled {
-      pointer-events: none;
-      opacity: 0.4;
+    .lot-table {
+      background: #ffeb3b;
+      color: #000;
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 0 20px #ffeb3b;
+      font-weight: bold;
+      width: 200px;
+    }
+
+    .lot-table h3 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 22px;
+    }
+
+    .lot-table table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .lot-table td {
+      padding: 6px 0;
+      text-align: center;
+      font-size: 18px;
     }
   </style>
 </head>
 <body>
-  <div class="ticket" id="ticket-container">
-    <img class="logo-gdj" src="https://imgur.com/dk2AFfU.png" alt="GDJ" />
-    <img class="logo-jackpot" src="https://imgur.com/Vo8m5Fk.png" alt="Jackpot" />
+  <div class="container">
+    <div class="ticket" id="ticket">
+      <img src="https://imgur.com/dk2AFfU.png" alt="GDJ" class="logo-gdj" />
+      <img src="https://imgur.com/Vo8m5Fk.png" alt="JACKPOT" class="logo-jackpot" />
+      <div class="price-circle">3 €</div>
 
-    <div class="machine">
-      <div class="reel"><div class="symbol" id="sym1">?</div><canvas></canvas></div>
-      <div class="reel"><div class="symbol" id="sym2">?</div><canvas></canvas></div>
-      <div class="reel"><div class="symbol" id="sym3">?</div><canvas></canvas></div>
+      <div class="machine-area" id="machines">
+        <!-- 3 machines -->
+        <div class="machine">
+          <div class="symbol" id="m1s1">?</div>
+          <div class="symbol" id="m1s2">?</div>
+          <div class="symbol" id="m1s3">?</div>
+          <canvas></canvas>
+        </div>
+        <div class="machine">
+          <div class="symbol" id="m2s1">?</div>
+          <div class="symbol" id="m2s2">?</div>
+          <div class="symbol" id="m2s3">?</div>
+          <canvas></canvas>
+        </div>
+        <div class="machine">
+          <div class="symbol" id="m3s1">?</div>
+          <div class="symbol" id="m3s2">?</div>
+          <div class="symbol" id="m3s3">?</div>
+          <canvas></canvas>
+        </div>
+      </div>
+
+      <div class="message" id="msg"></div>
+
+      <div class="bottom-info">
+        <div class="ticket-id" id="ticket-id">#0000</div>
+      </div>
     </div>
 
-    <div class="message" id="msg"></div>
-
-    <div class="bottom-info">
-      <div class="ticket-id" id="ticket-id">#0000</div>
-      <div class="price">💶 3 €</div>
+    <div class="lot-table">
+      <h3>Tableau des gains</h3>
+      <table>
+        <tr><td>💎💎💎</td><td>30 000 €</td></tr>
+        <tr><td>💰💰💰</td><td>500 €</td></tr>
+        <tr><td>👑👑👑</td><td>30 €</td></tr>
+        <tr><td>7️⃣7️⃣7️⃣</td><td>7 €</td></tr>
+        <tr><td>⭐⭐⭐</td><td>3 €</td></tr>
+      </table>
     </div>
   </div>
 
@@ -145,43 +213,72 @@
     const urlParams = new URLSearchParams(window.location.search);
     const ticketId = urlParams.get("id");
     const code = urlParams.get("code");
-    const apiURL = `/api/jackpot/${ticketId}?code=${code}`;
+
+    const apiURL = `/api/jackpot/ticket/${ticketId}?code=${code}`;
     const useURL = `/api/jackpot/use/${ticketId}`;
     const msg = document.getElementById("msg");
+
+    const symbolsList = ["💎", "💰", "👑", "7️⃣", "⭐"];
 
     async function loadTicket() {
       const res = await fetch(apiURL);
       const data = await res.json();
+
       if (!res.ok || data.used) {
-        document.getElementById("ticket-container").innerHTML =
-          "<h2 style='color:white;text-align:center'>🎟️ Ticket déjà utilisé<br><br><a href='/api/buyJackpot' style='color:#00ff66;text-decoration:none'>Achetez un nouveau ticket</a></h2>";
+        document.querySelector(".ticket").innerHTML =
+          "<h2 style='color:white;text-align:center;margin-top:250px'>🎟️ Ticket déjà utilisé<br><br><a href='/api/buyJackpot' style='color:#00ff66;text-decoration:none'>Achetez un nouveau ticket</a></h2>";
         return;
       }
 
       document.getElementById("ticket-id").textContent = "#" + data.id;
 
-      const symbols = [data.reel1, data.reel2, data.reel3];
-      ["sym1", "sym2", "sym3"].forEach((id, i) => {
-        document.getElementById(id).textContent = symbols[i];
+      // Génère les symboles selon le gain
+      let machines = [[], [], []];
+      if (data.gain !== "0") {
+        // Une machine gagnante aléatoire
+        const winningMachine = Math.floor(Math.random() * 3);
+        const symbol =
+          data.gain.includes("💎") ? "💎" :
+          data.gain.includes("💰") ? "💰" :
+          data.gain.includes("👑") ? "👑" :
+          data.gain.includes("7️⃣") ? "7️⃣" :
+          "⭐";
+        for (let i = 0; i < 3; i++) {
+          machines[winningMachine] = [symbol, symbol, symbol];
+        }
+      }
+      // Les autres sont aléatoires
+      for (let i = 0; i < 3; i++) {
+        if (machines[i].length === 0) {
+          machines[i] = Array.from({ length: 3 }, () => {
+            let s;
+            do { s = symbolsList[Math.floor(Math.random() * symbolsList.length)]; }
+            while (s === machines.find(m => m.includes(s)));
+            return s;
+          });
+        }
+      }
+
+      // Affiche les symboles
+      machines.flat().forEach((s, i) => {
+        document.getElementById(`m${Math.floor(i / 3) + 1}s${(i % 3) + 1}`).textContent = s;
       });
 
       setupScratch(data);
     }
 
     function setupScratch(data) {
-      const reels = document.querySelectorAll(".reel canvas");
+      const canvases = document.querySelectorAll(".machine canvas");
       let scratched = 0;
 
-      reels.forEach((canvas) => {
+      canvases.forEach((canvas) => {
         const ctx = canvas.getContext("2d");
         const w = canvas.width = canvas.offsetWidth;
         const h = canvas.height = canvas.offsetHeight;
-
         ctx.fillStyle = "#777";
         ctx.fillRect(0, 0, w, h);
 
         let isDrawing = false;
-
         const scratch = (x, y) => {
           ctx.globalCompositeOperation = "destination-out";
           ctx.beginPath();
@@ -190,34 +287,29 @@
         };
 
         canvas.addEventListener("mousedown", () => (isDrawing = true));
-        canvas.addEventListener("mouseup", () => (isDrawing = false));
+        canvas.addEventListener("mouseup", () => {
+          isDrawing = false;
+          scratched++;
+          if (scratched >= 3) revealResult(data);
+        });
         canvas.addEventListener("mousemove", (e) => {
           if (!isDrawing) return;
           const rect = canvas.getBoundingClientRect();
           scratch(e.clientX - rect.left, e.clientY - rect.top);
         });
+      });
+    }
 
-        canvas.addEventListener("touchmove", (e) => {
-          e.preventDefault();
-          const rect = canvas.getBoundingClientRect();
-          const touch = e.touches[0];
-          scratch(touch.clientX - rect.left, touch.clientY - rect.top);
-        });
+    async function revealResult(data) {
+      msg.textContent =
+        data.gain !== "0"
+          ? `🎉 Félicitations ! Vous gagnez ${data.gain.replace(/[^\d€]/g, "")} !`
+          : "😢 Perdu, retentez votre chance !";
 
-        canvas.addEventListener("mouseup", async () => {
-          scratched++;
-          if (scratched >= 3) {
-            msg.textContent = data.gain > 0
-              ? `💎 Vous gagnez ${data.gain} € !`
-              : "😢 Perdu, retentez votre chance !";
-            await fetch(useURL, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ code })
-            });
-            reels.forEach(c => c.classList.add("disabled"));
-          }
-        });
+      await fetch(useURL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code })
       });
     }
 

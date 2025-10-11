@@ -9,12 +9,20 @@ const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 app.use(cors());
-app.use(express.static("public")); // sert les fichiers HTML/CSS/JS
+app.use(express.static("public"));
 
 // --------------------
-// Millionnaire
+// FICHIERS
 // --------------------
-const TICKET_FILE = "tickets.json";
+const TICKET_FILE = "tickets.json";           // Millionnaire
+const POF_FILE = "tickets_pof.json";          // Pile ou Face
+const JACKPOT_FILE = "tickets_jackpot.json";  // 🎰 Jackpot
+
+// --------------------
+// DISTRIBUTIONS
+// --------------------
+
+// Millionnaire
 const distribution = [
   { gain: "⭐", count: 5 },
   { gain: "50K€", count: 2 },
@@ -27,10 +35,7 @@ const distribution = [
   { gain: "0", count: 525 }
 ];
 
-// --------------------
 // Pile ou Face
-// --------------------
-const POF_FILE = "tickets_pof.json";
 const POF_DISTRIBUTION = [
   { gain: "5000€", count: 3 },
   { gain: "200€", count: 5 },
@@ -40,29 +45,25 @@ const POF_DISTRIBUTION = [
   { gain: "2€", count: 400 },
   { gain: "1€", count: 1000 }
 ];
+const WIN_PROB = 1 / 8;
 
-const WIN_PROB = 1 / 8; // ✅ 1 chance sur 8 de gagner
+// 🎰 Jackpot — 1 chance sur 5 de gagner (5000 tickets)
+const JACKPOT_DISTRIBUTION = [
+  { gain: "💎 30 000€", count: 1 },
+  { gain: "💰 500€", count: 5 },
+  { gain: "👑 30€", count: 25 },
+  { gain: "7️⃣ 7€", count: 120 },
+  { gain: "⭐ 3€", count: 849 },
+  { gain: "0", count: 4000 }
+];
+const JACKPOT_WIN_PROB = 1 / 5;
 
 let tickets = [];
 let pofTickets = [];
-
-// --------------------
-// JACKPOT (Nouveau jeu)
-// --------------------
-const JACKPOT_FILE = "tickets_jackpot.json";
-const JACKPOT_PRICE = 3;
-const JACKPOT_DISTRIBUTION = [
-  { symbol: "💎", gain: "30 000€", count: 1 },
-  { symbol: "💰", gain: "500€", count: 9 },
-  { symbol: "👑", gain: "30€", count: 40 },
-  { symbol: "7️⃣", gain: "7€", count: 150 },
-  { symbol: "⭐", gain: "3€", count: 800 },
-  { symbol: "❌", gain: "0", count: 4000 }
-];
 let jackpotTickets = [];
 
 // --------------------
-// Fonctions utilitaires
+// FONCTIONS UTILITAIRES
 // --------------------
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -72,7 +73,7 @@ function shuffle(arr) {
 }
 
 // --------------------
-// Millionnaire
+// MILLIONNAIRE
 // --------------------
 function regenerateTickets() {
   let pool = [];
@@ -93,7 +94,7 @@ function regenerateTickets() {
 }
 
 // --------------------
-// Pile ou Face
+// PILE OU FACE
 // --------------------
 function regeneratePOFTickets() {
   pofTickets = [];
@@ -103,15 +104,16 @@ function regeneratePOFTickets() {
     let revealed, gain = "0";
 
     if (Math.random() < WIN_PROB) {
+      revealed = ticketType;
       const pool = [];
       POF_DISTRIBUTION.forEach(d => {
         for (let j = 0; j < d.count; j++) pool.push(d.gain);
       });
       shuffle(pool);
       gain = pool[Math.floor(Math.random() * pool.length)];
-      revealed = ticketType;
     } else {
       revealed = ticketType === "PILE" ? "FACE" : "PILE";
+      gain = "0";
     }
 
     pofTickets.push({
@@ -129,68 +131,51 @@ function regeneratePOFTickets() {
 }
 
 // --------------------
-// JACKPOT
+// 🎰 JACKPOT
 // --------------------
 function regenerateJackpotTickets() {
   let pool = [];
   JACKPOT_DISTRIBUTION.forEach(d => {
-    for (let i = 0; i < d.count; i++) pool.push({ symbol: d.symbol, gain: d.gain });
+    for (let i = 0; i < d.count; i++) pool.push(d.gain);
   });
   shuffle(pool);
 
-  jackpotTickets = pool.map((item, i) => {
-    const machines = [];
-    const allSymbols = ["💰", "💎", "👑", "7️⃣", "⭐", "❌"];
-
-    for (let m = 0; m < 3; m++) {
-      let row;
-      if (item.gain !== "0" && Math.random() < 0.33) {
-        row = [item.symbol, item.symbol, item.symbol];
-      } else {
-        row = [];
-        for (let j = 0; j < 3; j++) {
-          const rand = allSymbols[Math.floor(Math.random() * allSymbols.length)];
-          row.push(rand);
-        }
-      }
-      machines.push(row);
-    }
-
-    if (!machines.some(r => r[0] === r[1] && r[1] === r[2]) && item.gain !== "0") {
-      const idx = Math.floor(Math.random() * 3);
-      machines[idx] = [item.symbol, item.symbol, item.symbol];
-    }
-
-    return {
-      id: String(i + 1).padStart(4, "0"),
-      machines,
-      gain: item.gain,
-      symbol: item.symbol,
-      sold: false,
-      used: false,
-      code: null
-    };
-  });
+  jackpotTickets = pool.map((gain, index) => ({
+    id: String(index + 1).padStart(4, "0"),
+    gain,
+    sold: false,
+    used: false,
+    code: null
+  }));
 
   fs.writeFileSync(JACKPOT_FILE, JSON.stringify(jackpotTickets, null, 2));
 }
 
 // --------------------
-// Chargement
+// CHARGEMENT
 // --------------------
 function loadTickets() {
-  if (fs.existsSync(TICKET_FILE)) tickets = JSON.parse(fs.readFileSync(TICKET_FILE, "utf8"));
-  else regenerateTickets();
+  if (fs.existsSync(TICKET_FILE)) {
+    tickets = JSON.parse(fs.readFileSync(TICKET_FILE, "utf8"));
+  } else {
+    regenerateTickets();
+  }
 
-  if (fs.existsSync(POF_FILE)) pofTickets = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
-  else regeneratePOFTickets();
+  if (fs.existsSync(POF_FILE)) {
+    pofTickets = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
+  } else {
+    regeneratePOFTickets();
+  }
 
-  if (fs.existsSync(JACKPOT_FILE)) jackpotTickets = JSON.parse(fs.readFileSync(JACKPOT_FILE, "utf8"));
-  else regenerateJackpotTickets();
+  if (fs.existsSync(JACKPOT_FILE)) {
+    jackpotTickets = JSON.parse(fs.readFileSync(JACKPOT_FILE, "utf8"));
+  } else {
+    regenerateJackpotTickets();
+  }
 }
 
 // --------------------
-// API Millionnaire
+// API MILLIONNAIRE
 // --------------------
 app.get("/api/buyTicket", (req, res) => {
   const count = parseInt(req.query.count) || 1;
@@ -220,12 +205,13 @@ app.get("/api/ticket/:id", (req, res) => {
   const { code } = req.query;
   const t = tickets.find(tt => tt.id === req.params.id);
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
-  if (!code || t.code !== code) return res.status(403).json({ error: "Code invalide" });
+  if (!code || t.code !== code)
+    return res.status(403).json({ error: "Code invalide" });
   res.json(t);
 });
 
 // --------------------
-// API Pile ou Face
+// API PILE OU FACE
 // --------------------
 app.get("/api/buyPOF", (req, res) => {
   const count = parseInt(req.query.count) || 1;
@@ -252,7 +238,7 @@ app.get("/api/buyPOF", (req, res) => {
 });
 
 // --------------------
-// API JACKPOT
+// 🎰 API JACKPOT
 // --------------------
 app.get("/api/buyJackpot", (req, res) => {
   const count = parseInt(req.query.count) || 1;
@@ -282,91 +268,68 @@ app.get("/api/jackpot/ticket/:id", (req, res) => {
   const { code } = req.query;
   const t = jackpotTickets.find(tt => tt.id === req.params.id);
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
-  if (!code || t.code !== code) return res.status(403).json({ error: "Code invalide" });
+  if (!code || t.code !== code)
+    return res.status(403).json({ error: "Code invalide" });
+
+  if (t.used)
+    return res.status(403).json({ error: "Ticket déjà utilisé." });
+
   res.json(t);
 });
 
-// --------------------
-// Pages web
-// --------------------
-app.get("/ticket", (req, res) => res.sendFile(path.join(__dirname, "public", "ticket.html")));
-app.get("/pof", (req, res) => res.sendFile(path.join(__dirname, "public", "pof.html")));
-app.get("/jackpot", (req, res) => res.sendFile(path.join(__dirname, "public", "jackpot.html")));
-app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
-app.get("/", (req, res) => res.redirect("/ticket"));
+app.post("/api/jackpot/use/:id", (req, res) => {
+  const { code } = req.body;
+  const t = jackpotTickets.find(tt => tt.id === req.params.id);
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+  if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
+
+  t.used = true;
+  fs.writeFileSync(JACKPOT_FILE, JSON.stringify(jackpotTickets, null, 2));
+  res.json({ success: true, message: "Ticket marqué comme utilisé" });
+});
 
 // --------------------
-// Admin
+// ADMIN
+// --------------------
+app.get("/api/admin/checkJackpot/:id", (req, res) => {
+  const t = jackpotTickets.find(tt => tt.id === req.params.id);
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+  res.json(t);
+});
+
+app.post("/api/admin/resetJackpot", (req, res) => {
+  regenerateJackpotTickets();
+  res.json({ success: true, message: "🎰 Tickets Jackpot réinitialisés." });
+});
+
+// --------------------
+// STOCKS
 // --------------------
 app.get("/api/admin/stock", (req, res) => {
   const game = req.query.game;
-  const read = f => JSON.parse(fs.readFileSync(f, "utf8"));
 
   try {
-    if (game === "ticket") {
-      const d = read(TICKET_FILE);
-      return res.json({ total: d.length, used: d.filter(x => x.used).length, remaining: d.filter(x => !x.used).length });
-    } else if (game === "pof") {
-      const d = read(POF_FILE);
-      return res.json({ total: d.length, used: d.filter(x => x.used).length, remaining: d.filter(x => !x.used).length });
-    } else if (game === "jackpot") {
-      const d = read(JACKPOT_FILE);
-      return res.json({ total: d.length, used: d.filter(x => x.used).length, remaining: d.filter(x => !x.used).length });
-    } else {
-      return res.status(400).json({ error: "Jeu inconnu" });
-    }
+    const dataMap = {
+      ticket: TICKET_FILE,
+      pof: POF_FILE,
+      jackpot: JACKPOT_FILE
+    };
+    if (!dataMap[game]) return res.status(400).json({ error: "Jeu inconnu" });
+
+    const data = JSON.parse(fs.readFileSync(dataMap[game], "utf8"));
+    const total = data.length;
+    const used = data.filter(t => t.used).length;
+    const remaining = total - used;
+
+    res.json({ total, used, remaining });
   } catch (err) {
-    console.error("Erreur lecture stock:", err);
-    return res.status(500).json({ error: "Erreur lecture fichier." });
+    console.error("Erreur lecture stock :", err);
+    res.status(500).json({ error: "Erreur lecture des fichiers." });
   }
 });
 
-// ✅ Reset spécifiques
-app.post("/api/admin/reset", (req, res) => {
-  regenerateTickets();
-  regeneratePOFTickets();
-  regenerateJackpotTickets();
-  res.json({ success: true, message: "🎟️ Tous les tickets régénérés." });
-});
-
-// --------------------
-// ADMIN - Vérif Jackpot
-// --------------------
-app.get("/api/admin/checkJackpot/:id", (req, res) => {
-  try {
-    if (!fs.existsSync(JACKPOT_FILE)) {
-      return res.status(404).json({ error: "Fichier Jackpot introuvable." });
-    }
-
-    const data = JSON.parse(fs.readFileSync(JACKPOT_FILE, "utf8"));
-    const t = data.find(tt => tt.id === req.params.id);
-    if (!t) return res.status(404).json({ error: "Ticket introuvable" });
-
-    // Vérifie s’il y a une machine gagnante
-    let realGain = "PERDU";
-    const isWinning = t.machines.some(
-      m => m[0] === m[1] && m[1] === m[2] && t.gain !== "0"
-    );
-
-    if (isWinning) realGain = t.gain;
-
-    res.json({
-      id: t.id,
-      machines: t.machines,
-      gain: realGain,
-      sold: t.sold,
-      used: t.used,
-      code: t.code
-    });
-  } catch (err) {
-    console.error("Erreur /api/admin/checkJackpot:", err);
-    res.status(500).json({ error: "Erreur interne serveur." });
-  }
-});
-
-
-// --------------------
-// Démarrage
 // --------------------
 loadTickets();
-app.listen(PORT, () => console.log(`✅ Serveur lancé sur http://localhost:${PORT}`));
+app.listen(PORT, () =>
+  console.log(`✅ Serveur lancé sur http://localhost:${PORT}`)
+);
