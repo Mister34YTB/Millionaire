@@ -1,214 +1,227 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ticket JACKPOT</title>
-<style>
-  body {
-    margin: 0;
-    background: #0b7a2e;
-    font-family: Arial, sans-serif;
-    overflow-x: hidden;
-  }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎰 JACKPOT - GDJ</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Arial+Black&display=swap');
 
-  .header {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px 40px;
-    position: relative;
-  }
+    body {
+      margin: 0;
+      background: #000;
+      font-family: "Arial Black", sans-serif;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
 
-  .logo {
-    position: absolute;
-    left: 30px;
-    top: 10px;
-    background: #fff;
-    border-radius: 8px;
-    padding: 5px 10px;
-    font-weight: bold;
-    color: #0044aa;
-    font-family: Arial Black, sans-serif;
-    font-size: 24px;
-  }
+    .ticket {
+      position: relative;
+      width: 520px;
+      height: 680px;
+      border-radius: 20px;
+      background: radial-gradient(circle at center, #00ff66 0%, #003311 80%);
+      box-shadow: 0 0 25px #00ff66, inset 0 0 20px #00ff66;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 80px;
+    }
 
-  .logo::after {
-    content: "🍀";
-    margin-left: 5px;
-  }
+    .logo-jackpot {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+    }
 
-  .title {
-    font-family: Arial Black, sans-serif;
-    font-size: 72px;
-    color: gold;
-    letter-spacing: 4px;
-    text-shadow: 2px 2px 4px #000;
-  }
+    .logo-gdj {
+      position: absolute;
+      top: 25px;
+      left: 25px;
+      width: 60px;
+    }
 
-  .subtitle {
-    text-align: center;
-    color: black;
-    font-weight: bold;
-    margin-top: -10px;
-    font-size: 20px;
-  }
+    .machine {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 80px;
+      gap: 20px;
+    }
 
-  .container {
-    display: flex;
-    justify-content: space-between;
-    padding: 40px 60px;
-    flex-wrap: wrap;
-  }
+    .reel {
+      width: 110px;
+      height: 140px;
+      background: #222;
+      border-radius: 15px;
+      border: 3px solid #00ff66;
+      box-shadow: 0 0 15px #00ff66;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+    }
 
-  .machines {
-    display: flex;
-    gap: 40px;
-  }
+    .symbol {
+      font-size: 60px;
+      color: #fff;
+      text-shadow: 0 0 10px #00ff66;
+    }
 
-  .machine {
-    background: #fff;
-    border-radius: 16px;
-    box-shadow: 5px 5px 10px rgba(0,0,0,0.4);
-    padding: 15px;
-    display: flex;
-    gap: 10px;
-  }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 15px;
+      cursor: pointer;
+    }
 
-  .cell {
-    width: 70px;
-    height: 90px;
-    background: #fff;
-    border-radius: 8px;
-    border: 3px solid #000;
-    position: relative;
-    overflow: hidden;
-  }
+    .bottom-info {
+      position: absolute;
+      bottom: 15px;
+      left: 0;
+      width: 100%;
+      padding: 0 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 18px;
+      color: #fff;
+      text-shadow: 0 0 3px #000;
+    }
 
-  canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    border-radius: 8px;
-    z-index: 2;
-  }
+    .ticket-id {
+      color: black;
+      -webkit-text-stroke: 1px white;
+    }
 
-  .symbol {
-    font-size: 50px;
-    line-height: 90px;
-    text-align: center;
-    width: 100%;
-    z-index: 1;
-    position: relative;
-  }
+    .price {
+      font-weight: bold;
+    }
 
-  .lotstable {
-    background: #ffcc00;
-    padding: 15px 25px;
-    border-radius: 8px;
-    box-shadow: 4px 4px 10px rgba(0,0,0,0.4);
-    width: 240px;
-    height: fit-content;
-  }
+    .message {
+      position: absolute;
+      bottom: 80px;
+      color: #fff;
+      font-size: 20px;
+      text-shadow: 0 0 10px #00ff66;
+    }
 
-  .lotstable h3 {
-    text-align: center;
-    font-family: Arial Black, sans-serif;
-    font-size: 20px;
-    margin-bottom: 10px;
-  }
-
-  .lotstable .row {
-    display: flex;
-    justify-content: space-between;
-    font-weight: bold;
-    font-size: 18px;
-    padding: 4px 0;
-  }
-
-  .ticket-id {
-    position: absolute;
-    bottom: 8px;
-    left: 15px;
-    font-family: "Arial Black", sans-serif;
-    font-size: 16px;
-    color: black;
-    text-shadow: -1px -1px 0 white, 1px -1px 0 white, -1px 1px 0 white, 1px 1px 0 white;
-  }
-</style>
+    .disabled {
+      pointer-events: none;
+      opacity: 0.4;
+    }
+  </style>
 </head>
 <body>
+  <div class="ticket" id="ticket-container">
+    <img class="logo-gdj" src="https://imgur.com/dk2AFfU.png" alt="GDJ" />
+    <img class="logo-jackpot" src="https://imgur.com/Vo8m5Fk.png" alt="Jackpot" />
 
-<div class="header">
-  <div class="logo">GDJ</div>
-  <div class="title">JACKPOT</div>
-</div>
-<div class="subtitle">
-  Si vous découvrez 3 symboles identiques sur une même machine à sous<br>
-  vous remportez le gain associé
-</div>
+    <div class="machine">
+      <div class="reel"><div class="symbol" id="sym1">?</div><canvas></canvas></div>
+      <div class="reel"><div class="symbol" id="sym2">?</div><canvas></canvas></div>
+      <div class="reel"><div class="symbol" id="sym3">?</div><canvas></canvas></div>
+    </div>
 
-<div class="container">
-  <div class="machines">
-    <div class="machine" id="machine1"></div>
-    <div class="machine" id="machine2"></div>
-    <div class="machine" id="machine3"></div>
+    <div class="message" id="msg"></div>
+
+    <div class="bottom-info">
+      <div class="ticket-id" id="ticket-id">#0000</div>
+      <div class="price">💶 3 €</div>
+    </div>
   </div>
 
-  <div class="lotstable">
-    <h3>TABLEAU DES LOTS</h3>
-    <div class="row">💎 💎 💎 <span>30 000 €</span></div>
-    <div class="row">💰 💰 💰 <span>500 €</span></div>
-    <div class="row">👑 👑 👑 <span>30 €</span></div>
-    <div class="row">7️⃣ 7️⃣ 7️⃣ <span>7 €</span></div>
-    <div class="row">⭐ ⭐ ⭐ <span>3 €</span></div>
-  </div>
-</div>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const ticketId = urlParams.get("id");
+    const code = urlParams.get("code");
+    const apiURL = `/api/jackpot/${ticketId}?code=${code}`;
+    const useURL = `/api/jackpot/use/${ticketId}`;
+    const msg = document.getElementById("msg");
 
-<div class="ticket-id" id="ticketId">#000</div>
+    async function loadTicket() {
+      const res = await fetch(apiURL);
+      const data = await res.json();
+      if (!res.ok || data.used) {
+        document.getElementById("ticket-container").innerHTML =
+          "<h2 style='color:white;text-align:center'>🎟️ Ticket déjà utilisé<br><br><a href='/api/buyJackpot' style='color:#00ff66;text-decoration:none'>Achetez un nouveau ticket</a></h2>";
+        return;
+      }
 
-<script>
-  // Symboles disponibles
-  const symbols = ["💎","💰","👑","7️⃣","⭐","❌"];
-  const machines = [document.getElementById("machine1"), document.getElementById("machine2"), document.getElementById("machine3")];
-  const ticketNumber = Math.floor(1 + Math.random() * 5000);
-  document.getElementById("ticketId").textContent = "#" + ticketNumber.toString().padStart(3,"0");
+      document.getElementById("ticket-id").textContent = "#" + data.id;
 
-  machines.forEach(machine => {
-    for (let i=0; i<3; i++) {
-      const cell = document.createElement("div");
-      cell.className = "cell";
-
-      const symbol = document.createElement("div");
-      symbol.className = "symbol";
-      symbol.textContent = symbols[Math.floor(Math.random()*symbols.length)];
-      cell.appendChild(symbol);
-
-      const canvas = document.createElement("canvas");
-      canvas.width = 70;
-      canvas.height = 90;
-      cell.appendChild(canvas);
-
-      const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "#bbb";
-      ctx.fillRect(0,0,canvas.width,canvas.height);
-
-      let isDrawing = false;
-      canvas.addEventListener("mousedown", ()=>isDrawing=true);
-      canvas.addEventListener("mouseup", ()=>isDrawing=false);
-      canvas.addEventListener("mouseleave", ()=>isDrawing=false);
-      canvas.addEventListener("mousemove", e=>{
-        if (!isDrawing) return;
-        const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        ctx.clearRect(x-10, y-10, 20, 20);
+      const symbols = [data.reel1, data.reel2, data.reel3];
+      ["sym1", "sym2", "sym3"].forEach((id, i) => {
+        document.getElementById(id).textContent = symbols[i];
       });
 
-      machine.appendChild(cell);
+      setupScratch(data);
     }
-  });
-</script>
 
+    function setupScratch(data) {
+      const reels = document.querySelectorAll(".reel canvas");
+      let scratched = 0;
+
+      reels.forEach((canvas) => {
+        const ctx = canvas.getContext("2d");
+        const w = canvas.width = canvas.offsetWidth;
+        const h = canvas.height = canvas.offsetHeight;
+
+        ctx.fillStyle = "#777";
+        ctx.fillRect(0, 0, w, h);
+
+        let isDrawing = false;
+
+        const scratch = (x, y) => {
+          ctx.globalCompositeOperation = "destination-out";
+          ctx.beginPath();
+          ctx.arc(x, y, 20, 0, Math.PI * 2);
+          ctx.fill();
+        };
+
+        canvas.addEventListener("mousedown", () => (isDrawing = true));
+        canvas.addEventListener("mouseup", () => (isDrawing = false));
+        canvas.addEventListener("mousemove", (e) => {
+          if (!isDrawing) return;
+          const rect = canvas.getBoundingClientRect();
+          scratch(e.clientX - rect.left, e.clientY - rect.top);
+        });
+
+        canvas.addEventListener("touchmove", (e) => {
+          e.preventDefault();
+          const rect = canvas.getBoundingClientRect();
+          const touch = e.touches[0];
+          scratch(touch.clientX - rect.left, touch.clientY - rect.top);
+        });
+
+        canvas.addEventListener("mouseup", async () => {
+          scratched++;
+          if (scratched >= 3) {
+            msg.textContent = data.gain > 0
+              ? `💎 Vous gagnez ${data.gain} € !`
+              : "😢 Perdu, retentez votre chance !";
+            await fetch(useURL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ code })
+            });
+            reels.forEach(c => c.classList.add("disabled"));
+          }
+        });
+      });
+    }
+
+    loadTicket();
+  </script>
 </body>
 </html>
