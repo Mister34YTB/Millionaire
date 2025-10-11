@@ -289,14 +289,25 @@ app.get("/api/jackpot/ticket/:id", (req, res) => {
 // ✅ Marque un ticket Jackpot comme utilisé
 app.post("/api/jackpot/use/:id", (req, res) => {
   const { code } = req.body;
-  const t = jackpotTickets.find(tt => tt.id === req.params.id);
+  const id = req.params.id;
+
+  if (!fs.existsSync(JACKPOT_FILE)) {
+    return res.status(404).json({ error: "Fichier Jackpot introuvable." });
+  }
+
+  const data = JSON.parse(fs.readFileSync(JACKPOT_FILE, "utf8"));
+  const t = data.find(tt => tt.id === id);
+
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
   if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
 
   t.used = true;
-  fs.writeFileSync(JACKPOT_FILE, JSON.stringify(jackpotTickets, null, 2));
-  res.json({ success: true, message: "Ticket marqué comme utilisé" });
+  fs.writeFileSync(JACKPOT_FILE, JSON.stringify(data, null, 2));
+
+  console.log(`✅ Ticket ${id} marqué comme utilisé.`);
+  res.json({ success: true, message: "Ticket marqué comme utilisé." });
 });
+
 
 
 // --------------------
