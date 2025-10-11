@@ -27,23 +27,29 @@
     }
 
     .ticket {
-  position: relative;
-  width: 520px;
-  height: 720px;
-  border-radius: 20px;
-  background: radial-gradient(circle at center, #00ff66 0%, #002b0f 70%, #000 100%);
-  box-shadow:
-    0 0 35px #00ff66,
-    0 0 70px #00ff66,
-    inset 0 0 30px #00ff66;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  padding-top: 100px;
-  overflow: hidden;
-}
+      position: relative;
+      width: 520px;
+      height: 720px;
+      border-radius: 20px;
+      background: radial-gradient(circle at center, #00ff66 0%, #002b0f 70%, #000 100%);
+      box-shadow:
+        0 0 35px #00ff66,
+        0 0 70px #00ff66,
+        inset 0 0 30px #00ff66;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 100px;
+      overflow: hidden;
+      transition: opacity 1s ease-out, transform 1s ease-out;
+    }
 
+    .ticket.destroyed {
+      opacity: 0;
+      transform: scale(0.9) rotate(-10deg);
+      pointer-events: none;
+    }
 
     .logo-gdj {
       position: absolute;
@@ -222,17 +228,17 @@
     const apiURL = `/api/jackpot/ticket/${ticketId}?code=${code}`;
     const useURL = `/api/jackpot/use/${ticketId}`;
     const msg = document.getElementById("msg");
+    const ticketEl = document.getElementById("ticket");
 
     async function loadTicket() {
       const res = await fetch(apiURL);
       const data = await res.json();
 
-      // Si ticket déjà utilisé
       if (!res.ok || data.used) {
-        document.querySelector(".ticket").innerHTML = `
+        ticketEl.innerHTML = `
           <h2 style='color:white;text-align:center;margin-top:250px'>
             🎟️ Ce ticket a déjà été utilisé<br><br>
-            <a href='/api/buyJackpot' style='color:#00ff66;text-decoration:none'>
+            <a href='/api/buyJackpot?count=1' style='color:#00ff66;text-decoration:none'>
               Achetez un nouveau ticket
             </a>
           </h2>`;
@@ -241,7 +247,6 @@
 
       document.getElementById("ticket-id").textContent = "#" + data.id;
 
-      // Remplit les symboles
       data.machines.forEach((row, i) => {
         row.forEach((sym, j) => {
           document.getElementById(`m${i + 1}s${j + 1}`).textContent = sym;
@@ -253,8 +258,9 @@
 
     function setupScratch(data) {
       const canvases = document.querySelectorAll(".machine canvas");
-      let scratched = 0;
-      let disabled = false;
+      let scratchedPixels = 0;
+      let totalPixels = 0;
+      let destroyed = false;
 
       canvases.forEach((canvas) => {
         const ctx = canvas.getContext("2d");
@@ -263,26 +269,28 @@
         ctx.fillStyle = "#777";
         ctx.fillRect(0, 0, w, h);
 
+        totalPixels += w * h;
+
         let isDrawing = false;
         const scratch = (x, y) => {
-          if (disabled) return;
+          if (destroyed) return;
           ctx.globalCompositeOperation = "destination-out";
           ctx.beginPath();
           ctx.arc(x, y, 20, 0, Math.PI * 2);
           ctx.fill();
+          scratchedPixels += 1250; // surface grattée estimée
+
+          const progress = scratchedPixels / totalPixels;
+          if (progress >= 0.7 && !destroyed) {
+            destroyed = true;
+            revealResult(data);
+          }
         };
 
         canvas.addEventListener("mousedown", () => (isDrawing = true));
-        canvas.addEventListener("mouseup", () => {
-          isDrawing = false;
-          scratched++;
-          if (scratched >= 3 && !disabled) {
-            disabled = true;
-            revealResult(data);
-          }
-        });
+        canvas.addEventListener("mouseup", () => (isDrawing = false));
         canvas.addEventListener("mousemove", (e) => {
-          if (!isDrawing || disabled) return;
+          if (!isDrawing || destroyed) return;
           const rect = canvas.getBoundingClientRect();
           scratch(e.clientX - rect.left, e.clientY - rect.top);
         });
@@ -295,15 +303,26 @@
           ? `🎉 Félicitations ! Vous gagnez ${data.gain.replace(/[^\d€]/g, "")} !`
           : "😢 Perdu, retentez votre chance !";
 
-      // Marque comme utilisé côté serveur
+      // ✅ Marque comme utilisé côté serveur
       await fetch(useURL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code })
       });
 
-      // Bloque les interactions
-      document.querySelectorAll("canvas").forEach(c => c.style.pointerEvents = "none");
+      // ✅ Animation de destruction
+      setTimeout(() => {
+        ticketEl.classList.add("destroyed");
+        setTimeout(() => {
+          ticketEl.innerHTML = `
+            <h2 style='color:white;text-align:center;margin-top:250px'>
+              🎟️ Ticket détruit<br><br>
+              <a href='/api/buyJackpot?count=1' style='color:#00ff66;text-decoration:none'>
+                Racheter un ticket
+              </a>
+            </h2>`;
+        }, 1000);
+      }, 1500);
     }
 
     loadTicket();
