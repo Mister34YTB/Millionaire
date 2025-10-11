@@ -28,8 +28,8 @@
 
     .ticket {
       position: relative;
-      width: 700px;
-      height: 500px;
+      width: 520px;
+      height: 720px;
       background: #000;
       border-radius: 20px;
       box-shadow: 0 0 25px #00ff66, inset 0 0 20px #00ff66;
@@ -37,7 +37,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      padding-top: 90px;
+      padding-top: 100px;
     }
 
     .logo-gdj {
@@ -75,6 +75,7 @@
     .machine-area {
       margin-top: 50px;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       gap: 25px;
@@ -85,8 +86,8 @@
       border-radius: 15px;
       border: 3px solid #00ff66;
       box-shadow: 0 0 20px #00ff66;
-      width: 180px;
-      height: 180px;
+      width: 320px;
+      height: 130px;
       display: flex;
       flex-direction: row;
       justify-content: space-evenly;
@@ -169,7 +170,6 @@
       <div class="price-circle">3 €</div>
 
       <div class="machine-area" id="machines">
-        <!-- 3 machines alignées -->
         <div class="machine">
           <div class="symbol" id="m1s1">?</div>
           <div class="symbol" id="m1s2">?</div>
@@ -218,35 +218,29 @@
     const useURL = `/api/jackpot/use/${ticketId}`;
     const msg = document.getElementById("msg");
 
-    const symbolsList = ["💎", "💰", "👑", "7️⃣", "⭐"];
-
     async function loadTicket() {
       const res = await fetch(apiURL);
       const data = await res.json();
 
+      // Si ticket déjà utilisé
       if (!res.ok || data.used) {
-        document.querySelector(".ticket").innerHTML =
-          "<h2 style='color:white;text-align:center;margin-top:180px'>🎟️ Ticket déjà utilisé<br><br><a href='/api/buyJackpot' style='color:#00ff66;text-decoration:none'>Achetez un nouveau ticket</a></h2>";
+        document.querySelector(".ticket").innerHTML = `
+          <h2 style='color:white;text-align:center;margin-top:250px'>
+            🎟️ Ce ticket a déjà été utilisé<br><br>
+            <a href='/api/buyJackpot' style='color:#00ff66;text-decoration:none'>
+              Achetez un nouveau ticket
+            </a>
+          </h2>`;
         return;
       }
 
       document.getElementById("ticket-id").textContent = "#" + data.id;
 
-      let machines = [[], [], []];
-      if (data.gain !== "0") {
-        const winningMachine = Math.floor(Math.random() * 3);
-        const symbol = data.symbol;
-        machines[winningMachine] = [symbol, symbol, symbol];
-      }
-
-      for (let i = 0; i < 3; i++) {
-        if (machines[i].length === 0) {
-          machines[i] = Array.from({ length: 3 }, () => symbolsList[Math.floor(Math.random() * symbolsList.length)]);
-        }
-      }
-
-      machines.flat().forEach((s, i) => {
-        document.getElementById(`m${Math.floor(i / 3) + 1}s${(i % 3) + 1}`).textContent = s;
+      // Remplit les symboles
+      data.machines.forEach((row, i) => {
+        row.forEach((sym, j) => {
+          document.getElementById(`m${i + 1}s${j + 1}`).textContent = sym;
+        });
       });
 
       setupScratch(data);
@@ -255,6 +249,7 @@
     function setupScratch(data) {
       const canvases = document.querySelectorAll(".machine canvas");
       let scratched = 0;
+      let disabled = false;
 
       canvases.forEach((canvas) => {
         const ctx = canvas.getContext("2d");
@@ -265,6 +260,7 @@
 
         let isDrawing = false;
         const scratch = (x, y) => {
+          if (disabled) return;
           ctx.globalCompositeOperation = "destination-out";
           ctx.beginPath();
           ctx.arc(x, y, 20, 0, Math.PI * 2);
@@ -275,10 +271,13 @@
         canvas.addEventListener("mouseup", () => {
           isDrawing = false;
           scratched++;
-          if (scratched >= 3) revealResult(data);
+          if (scratched >= 3 && !disabled) {
+            disabled = true;
+            revealResult(data);
+          }
         });
         canvas.addEventListener("mousemove", (e) => {
-          if (!isDrawing) return;
+          if (!isDrawing || disabled) return;
           const rect = canvas.getBoundingClientRect();
           scratch(e.clientX - rect.left, e.clientY - rect.top);
         });
@@ -291,11 +290,15 @@
           ? `🎉 Félicitations ! Vous gagnez ${data.gain.replace(/[^\d€]/g, "")} !`
           : "😢 Perdu, retentez votre chance !";
 
+      // Marque comme utilisé côté serveur
       await fetch(useURL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code })
       });
+
+      // Bloque les interactions
+      document.querySelectorAll("canvas").forEach(c => c.style.pointerEvents = "none");
     }
 
     loadTicket();
