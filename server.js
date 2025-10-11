@@ -52,8 +52,8 @@ let pofTickets = [];
 const JACKPOT_FILE = "tickets_jackpot.json";
 const JACKPOT_PRICE = 3;
 const JACKPOT_DISTRIBUTION = [
-  { symbol: "💰", gain: "30 000€", count: 1 },
-  { symbol: "💎", gain: "500€", count: 9 },
+  { symbol: "💎", gain: "30 000€", count: 1 },
+  { symbol: "💰", gain: "500€", count: 9 },
   { symbol: "👑", gain: "30€", count: 40 },
   { symbol: "7️⃣", gain: "7€", count: 150 },
   { symbol: "⭐", gain: "3€", count: 800 },
@@ -328,6 +328,42 @@ app.post("/api/admin/reset", (req, res) => {
   regenerateJackpotTickets();
   res.json({ success: true, message: "🎟️ Tous les tickets régénérés." });
 });
+
+// --------------------
+// ADMIN - Vérif Jackpot
+// --------------------
+app.get("/api/admin/checkJackpot/:id", (req, res) => {
+  try {
+    if (!fs.existsSync(JACKPOT_FILE)) {
+      return res.status(404).json({ error: "Fichier Jackpot introuvable." });
+    }
+
+    const data = JSON.parse(fs.readFileSync(JACKPOT_FILE, "utf8"));
+    const t = data.find(tt => tt.id === req.params.id);
+    if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+
+    // Vérifie s’il y a une machine gagnante
+    let realGain = "PERDU";
+    const isWinning = t.machines.some(
+      m => m[0] === m[1] && m[1] === m[2] && t.gain !== "0"
+    );
+
+    if (isWinning) realGain = t.gain;
+
+    res.json({
+      id: t.id,
+      machines: t.machines,
+      gain: realGain,
+      sold: t.sold,
+      used: t.used,
+      code: t.code
+    });
+  } catch (err) {
+    console.error("Erreur /api/admin/checkJackpot:", err);
+    res.status(500).json({ error: "Erreur interne serveur." });
+  }
+});
+
 
 // --------------------
 // Démarrage
