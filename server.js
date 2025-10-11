@@ -313,6 +313,30 @@ app.get("/api/admin/stock", (req, res) => {
   }
 });
 
+function repairOldTickets() {
+  const fixFile = (file) => {
+    if (!fs.existsSync(file)) return;
+    const data = JSON.parse(fs.readFileSync(file, "utf8"));
+    let changed = false;
+
+    data.forEach(t => {
+      if (t.sold === undefined) { t.sold = false; changed = true; }
+      if (t.used === undefined) { t.used = false; changed = true; }
+      if (t.code === undefined) { t.code = null; changed = true; }
+    });
+
+    if (changed) {
+      fs.writeFileSync(file, JSON.stringify(data, null, 2));
+      console.log(`✅ Tickets réparés dans ${file}`);
+    }
+  };
+
+  fixFile("tickets.json");
+  fixFile("tickets_pof.json");
+}
+
+repairOldTickets();
+
 
 // --------------------
 loadTickets();
