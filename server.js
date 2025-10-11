@@ -286,6 +286,19 @@ app.get("/api/jackpot/ticket/:id", (req, res) => {
   res.json(t);
 });
 
+// ✅ Marque un ticket Jackpot comme utilisé
+app.post("/api/jackpot/use/:id", (req, res) => {
+  const { code } = req.body;
+  const t = jackpotTickets.find(tt => tt.id === req.params.id);
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+  if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
+
+  t.used = true;
+  fs.writeFileSync(JACKPOT_FILE, JSON.stringify(jackpotTickets, null, 2));
+  res.json({ success: true, message: "Ticket marqué comme utilisé" });
+});
+
+
 // --------------------
 // Pages web (corrigées)
 // --------------------
