@@ -278,30 +278,41 @@ app.get("/api/buyJackpot", (req, res) => {
   res.json({ tickets: bought });
 });
 
-// ✅ Lecture d’un ticket Jackpot
+// ✅ Lecture et verrouillage d’un ticket Jackpot
 app.get("/api/jackpot/ticket/:id", (req, res) => {
   const { code } = req.query;
+
   if (!fs.existsSync(JACKPOT_FILE)) {
     return res.status(404).json({ error: "Fichier Jackpot introuvable." });
   }
 
+  // Lire le fichier et trouver le ticket
   const data = JSON.parse(fs.readFileSync(JACKPOT_FILE, "utf8"));
   const t = data.find(tt => tt.id === req.params.id);
 
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
   if (!code || t.code !== code) return res.status(403).json({ error: "Code invalide" });
 
-  // ✅ Si le ticket a déjà été utilisé → bloquer
+  // ✅ Si déjà utilisé, on bloque tout de suite
   if (t.used) {
     return res.status(403).json({ error: "Ce ticket a déjà été utilisé." });
   }
 
-  // ✅ Marquer le ticket comme utilisé dès la première ouverture
+  // ✅ Marquer comme utilisé IMMÉDIATEMENT
   t.used = true;
   fs.writeFileSync(JACKPOT_FILE, JSON.stringify(data, null, 2));
 
-  console.log(`🎟️ Ticket #${t.id} ouvert et verrouillé.`);
-  res.json(t);
+  // ✅ Envoyer le contenu au premier utilisateur
+  console.log(`🎰 Ticket #${t.id} utilisé par le premier joueur.`);
+  res.json({
+    id: t.id,
+    code: t.code,
+    machines: t.machines,
+    gain: t.gain,
+    sold: t.sold,
+    used: false, // ← autorise le premier joueur à gratter une seule fois
+    symbol: t.symbol
+  });
 });
 
 
