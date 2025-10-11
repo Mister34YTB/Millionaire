@@ -27,9 +27,11 @@
 
   <!-- Choix du jeu -->
   <select id="gameType">
-    <option value="millionaire">Millionaire</option>
-    <option value="pof">Pile ou Face</option>
-  </select>
+  <option value="millionaire">Millionaire</option>
+  <option value="pof">Pile ou Face</option>
+  <option value="jackpot">Jackpot</option>
+</select>
+
 
   <!-- Numéro du ticket -->
   <input type="text" id="ticketId" placeholder="Numéro ex: 001">
@@ -44,11 +46,14 @@
     if (!id) return alert("⚠️ Entre un numéro !");
 
     let url = "";
-    if (game === "millionaire") {
-      url = `/api/admin/checkTicket/${id}`;
-    } else if (game === "pof") {
-      url = `/api/admin/checkPOF/${id}`;
-    }
+   if (game === "millionaire") {
+  url = `/api/admin/checkTicket/${id}`;
+} else if (game === "pof") {
+  url = `/api/admin/checkPOF/${id}`;
+} else if (game === "jackpot") {
+  url = `/api/admin/checkJackpot/${id}`;
+}
+
 
     try {
       const res = await fetch(url);
