@@ -28,8 +28,8 @@
 
     .ticket {
       position: relative;
-      width: 520px;
-      height: 700px;
+      width: 700px;
+      height: 500px;
       background: #000;
       border-radius: 20px;
       box-shadow: 0 0 25px #00ff66, inset 0 0 20px #00ff66;
@@ -37,7 +37,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      padding-top: 100px;
+      padding-top: 90px;
     }
 
     .logo-gdj {
@@ -73,11 +73,11 @@
     }
 
     .machine-area {
-      margin-top: 70px;
+      margin-top: 50px;
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 20px;
+      gap: 25px;
     }
 
     .machine {
@@ -85,10 +85,10 @@
       border-radius: 15px;
       border: 3px solid #00ff66;
       box-shadow: 0 0 20px #00ff66;
-      width: 130px;
-      height: 350px;
+      width: 180px;
+      height: 180px;
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       justify-content: space-evenly;
       align-items: center;
       position: relative;
@@ -112,11 +112,11 @@
 
     .bottom-info {
       position: absolute;
-      bottom: 10px;
+      bottom: 15px;
       width: 100%;
       display: flex;
-      justify-content: space-between;
-      padding: 0 20px;
+      justify-content: flex-start;
+      padding-left: 45px;
     }
 
     .ticket-id {
@@ -127,7 +127,7 @@
 
     .message {
       text-align: center;
-      margin-top: 25px;
+      margin-top: 20px;
       font-size: 22px;
       color: #fff;
       text-shadow: 0 0 10px #00ff66;
@@ -169,7 +169,7 @@
       <div class="price-circle">3 €</div>
 
       <div class="machine-area" id="machines">
-        <!-- 3 machines -->
+        <!-- 3 machines alignées -->
         <div class="machine">
           <div class="symbol" id="m1s1">?</div>
           <div class="symbol" id="m1s2">?</div>
@@ -226,40 +226,25 @@
 
       if (!res.ok || data.used) {
         document.querySelector(".ticket").innerHTML =
-          "<h2 style='color:white;text-align:center;margin-top:250px'>🎟️ Ticket déjà utilisé<br><br><a href='/api/buyJackpot' style='color:#00ff66;text-decoration:none'>Achetez un nouveau ticket</a></h2>";
+          "<h2 style='color:white;text-align:center;margin-top:180px'>🎟️ Ticket déjà utilisé<br><br><a href='/api/buyJackpot' style='color:#00ff66;text-decoration:none'>Achetez un nouveau ticket</a></h2>";
         return;
       }
 
       document.getElementById("ticket-id").textContent = "#" + data.id;
 
-      // Génère les symboles selon le gain
       let machines = [[], [], []];
       if (data.gain !== "0") {
-        // Une machine gagnante aléatoire
         const winningMachine = Math.floor(Math.random() * 3);
-        const symbol =
-          data.gain.includes("💎") ? "💎" :
-          data.gain.includes("💰") ? "💰" :
-          data.gain.includes("👑") ? "👑" :
-          data.gain.includes("7️⃣") ? "7️⃣" :
-          "⭐";
-        for (let i = 0; i < 3; i++) {
-          machines[winningMachine] = [symbol, symbol, symbol];
-        }
+        const symbol = data.symbol;
+        machines[winningMachine] = [symbol, symbol, symbol];
       }
-      // Les autres sont aléatoires
+
       for (let i = 0; i < 3; i++) {
         if (machines[i].length === 0) {
-          machines[i] = Array.from({ length: 3 }, () => {
-            let s;
-            do { s = symbolsList[Math.floor(Math.random() * symbolsList.length)]; }
-            while (s === machines.find(m => m.includes(s)));
-            return s;
-          });
+          machines[i] = Array.from({ length: 3 }, () => symbolsList[Math.floor(Math.random() * symbolsList.length)]);
         }
       }
 
-      // Affiche les symboles
       machines.flat().forEach((s, i) => {
         document.getElementById(`m${Math.floor(i / 3) + 1}s${(i % 3) + 1}`).textContent = s;
       });
