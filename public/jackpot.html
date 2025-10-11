@@ -220,112 +220,116 @@
     </div>
   </div>
 
-  <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const ticketId = urlParams.get("id");
-    const code = urlParams.get("code");
+ <script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const ticketId = urlParams.get("id");
+  const code = urlParams.get("code");
 
-    const apiURL = `/api/jackpot/ticket/${ticketId}?code=${code}`;
-    const useURL = `/api/jackpot/use/${ticketId}`;
-    const msg = document.getElementById("msg");
-    const ticketEl = document.getElementById("ticket");
+  const apiURL = `/api/jackpot/ticket/${ticketId}?code=${code}`;
+  const useURL = `/api/jackpot/use/${ticketId}`;
+  const msg = document.getElementById("msg");
+  const ticketEl = document.getElementById("ticket");
 
-    async function loadTicket() {
-      const res = await fetch(apiURL);
-      const data = await res.json();
+  async function loadTicket() {
+    const res = await fetch(apiURL);
+    const data = await res.json();
 
-      if (!res.ok || data.used) {
-        ticketEl.innerHTML = `
-          <h2 style='color:white;text-align:center;margin-top:250px'>
-            🎟️ Ce ticket a déjà été utilisé<br><br>
-            <a href='/api/buyJackpot?count=1' style='color:#00ff66;text-decoration:none'>
-              Achetez un nouveau ticket
-            </a>
-          </h2>`;
-        return;
-      }
-
-      document.getElementById("ticket-id").textContent = "#" + data.id;
-
-      data.machines.forEach((row, i) => {
-        row.forEach((sym, j) => {
-          document.getElementById(`m${i + 1}s${j + 1}`).textContent = sym;
-        });
-      });
-
-      setupScratch(data);
+    if (!res.ok || data.used) {
+      ticketEl.innerHTML = `
+        <h2 style='color:white;text-align:center;margin-top:250px'>
+          🎟️ Ce ticket a déjà été utilisé<br><br>
+          <a href='/api/buyJackpot?count=1' style='color:#00ff66;text-decoration:none'>
+            Achetez un nouveau ticket
+          </a>
+        </h2>`;
+      return;
     }
 
-    function setupScratch(data) {
-      const canvases = document.querySelectorAll(".machine canvas");
+    document.getElementById("ticket-id").textContent = "#" + data.id;
+
+    data.machines.forEach((row, i) => {
+      row.forEach((sym, j) => {
+        document.getElementById(`m${i + 1}s${j + 1}`).textContent = sym;
+      });
+    });
+
+    setupScratch(data);
+  }
+
+  function setupScratch(data) {
+    const canvases = document.querySelectorAll(".machine canvas");
+    let totalAreas = canvases.length;
+    let scratchedCount = 0;
+    let fullyScratched = false;
+
+    canvases.forEach((canvas) => {
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width = canvas.offsetWidth;
+      const h = canvas.height = canvas.offsetHeight;
+      ctx.fillStyle = "#777";
+      ctx.fillRect(0, 0, w, h);
+
       let scratchedPixels = 0;
-      let totalPixels = 0;
-      let destroyed = false;
+      const totalPixels = w * h;
 
-      canvases.forEach((canvas) => {
-        const ctx = canvas.getContext("2d");
-        const w = canvas.width = canvas.offsetWidth;
-        const h = canvas.height = canvas.offsetHeight;
-        ctx.fillStyle = "#777";
-        ctx.fillRect(0, 0, w, h);
+      let isDrawing = false;
+      const scratch = (x, y) => {
+        if (fullyScratched) return;
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.beginPath();
+        ctx.arc(x, y, 20, 0, Math.PI * 2);
+        ctx.fill();
+        scratchedPixels += 1250;
 
-        totalPixels += w * h;
-
-        let isDrawing = false;
-        const scratch = (x, y) => {
-          if (destroyed) return;
-          ctx.globalCompositeOperation = "destination-out";
-          ctx.beginPath();
-          ctx.arc(x, y, 20, 0, Math.PI * 2);
-          ctx.fill();
-          scratchedPixels += 1250; // surface grattée estimée
-
-          const progress = scratchedPixels / totalPixels;
-          if (progress >= 0.7 && !destroyed) {
-            destroyed = true;
+        if (scratchedPixels / totalPixels >= 0.95) {
+          scratchedCount++;
+          scratchedPixels = totalPixels; // évite de recompter
+          if (scratchedCount >= totalAreas && !fullyScratched) {
+            fullyScratched = true;
             revealResult(data);
           }
-        };
+        }
+      };
 
-        canvas.addEventListener("mousedown", () => (isDrawing = true));
-        canvas.addEventListener("mouseup", () => (isDrawing = false));
-        canvas.addEventListener("mousemove", (e) => {
-          if (!isDrawing || destroyed) return;
-          const rect = canvas.getBoundingClientRect();
-          scratch(e.clientX - rect.left, e.clientY - rect.top);
-        });
+      canvas.addEventListener("mousedown", () => (isDrawing = true));
+      canvas.addEventListener("mouseup", () => (isDrawing = false));
+      canvas.addEventListener("mousemove", (e) => {
+        if (!isDrawing || fullyScratched) return;
+        const rect = canvas.getBoundingClientRect();
+        scratch(e.clientX - rect.left, e.clientY - rect.top);
       });
-    }
+    });
+  }
 
-    async function revealResult(data) {
-      msg.textContent =
-        data.gain !== "0"
-          ? `🎉 Félicitations ! Vous gagnez ${data.gain.replace(/[^\d€]/g, "")} !`
-          : "😢 Perdu, retentez votre chance !";
+  async function revealResult(data) {
+    msg.textContent =
+      data.gain !== "0"
+        ? `🎉 Félicitations ! Vous gagnez ${data.gain.replace(/[^\d€]/g, "")} !`
+        : "😢 Perdu, retentez votre chance !";
 
-      // ✅ Marque comme utilisé côté serveur
+    // ✅ Marque comme utilisé côté serveur après 5 secondes
+    setTimeout(async () => {
       await fetch(useURL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code })
       });
 
-      // ✅ Animation de destruction
+      // ✅ Animation de destruction après 5s
+      ticketEl.classList.add("destroyed");
       setTimeout(() => {
-        ticketEl.classList.add("destroyed");
-        setTimeout(() => {
-          ticketEl.innerHTML = `
-            <h2 style='color:white;text-align:center;margin-top:250px'>
-              🎟️ Ticket détruit<br><br>
-              <a href='/api/buyJackpot?count=1' style='color:#00ff66;text-decoration:none'>
-                Racheter un ticket
-              </a>
-            </h2>`;
-        }, 1000);
-      }, 1500);
-    }
+        ticketEl.innerHTML = `
+          <h2 style='color:white;text-align:center;margin-top:250px'>
+            🎟️ Ticket détruit<br><br>
+            <a href='/api/buyJackpot?count=1' style='color:#00ff66;text-decoration:none'>
+              Racheter un ticket
+            </a>
+          </h2>`;
+      }, 1000);
+    }, 5000);
+  }
 
-    loadTicket();
-  </script>
+  loadTicket();
+</script>
 </body>
 </html>
