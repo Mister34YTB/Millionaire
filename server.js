@@ -218,11 +218,28 @@ app.get("/api/buyTicket", (req, res) => {
 
 app.get("/api/ticket/:id", (req, res) => {
   const { code } = req.query;
-  const t = tickets.find(tt => tt.id === req.params.id);
+
+  if (!fs.existsSync(TICKET_FILE)) {
+    return res.status(404).json({ error: "Fichier Millionnaire introuvable." });
+  }
+
+  const data = JSON.parse(fs.readFileSync(TICKET_FILE, "utf8"));
+  const t = data.find(tt => tt.id === req.params.id);
+
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
   if (!code || t.code !== code) return res.status(403).json({ error: "Code invalide" });
+
+  if (t.used) {
+    return res.status(403).json({ error: "Ce ticket a déjà été utilisé." });
+  }
+
+  // ✅ Marquer comme utilisé et sauvegarder
+  t.used = true;
+  fs.writeFileSync(TICKET_FILE, JSON.stringify(data, null, 2));
+
   res.json(t);
 });
+
 
 // --------------------
 // API Pile ou Face
@@ -277,6 +294,32 @@ app.get("/api/buyJackpot", (req, res) => {
   fs.writeFileSync(JACKPOT_FILE, JSON.stringify(jackpotTickets, null, 2));
   res.json({ tickets: bought });
 });
+
+// ✅ Lecture et verrouillage d’un ticket Pile ou Face
+app.get("/api/pof/ticket/:id", (req, res) => {
+  const { code } = req.query;
+
+  if (!fs.existsSync(POF_FILE)) {
+    return res.status(404).json({ error: "Fichier Pile ou Face introuvable." });
+  }
+
+  const data = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
+  const t = data.find(tt => tt.id === req.params.id);
+
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+  if (!code || t.code !== code) return res.status(403).json({ error: "Code invalide" });
+
+  if (t.used) {
+    return res.status(403).json({ error: "Ce ticket a déjà été utilisé." });
+  }
+
+  // ✅ Marquer comme utilisé
+  t.used = true;
+  fs.writeFileSync(POF_FILE, JSON.stringify(data, null, 2));
+
+  res.json(t);
+});
+
 
 // ✅ Lecture et verrouillage d’un ticket Jackpot
 app.get("/api/jackpot/ticket/:id", (req, res) => {
