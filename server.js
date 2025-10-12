@@ -52,12 +52,12 @@ let pofTickets = [];
 const JACKPOT_FILE = "tickets_jackpot.json";
 const JACKPOT_PRICE = 3;
 const JACKPOT_DISTRIBUTION = [
-  { symbol: "💎", gain: "30 000€", count: 1 },
-  { symbol: "💰", gain: "500€", count: 9 },
+  { symbol: "💎", gain: "30 000€", count: 3 },
+  { symbol: "💰", gain: "500€", count: 5 },
   { symbol: "👑", gain: "30€", count: 40 },
   { symbol: "7️⃣", gain: "7€", count: 150 },
   { symbol: "⭐", gain: "3€", count: 800 },
-  { symbol: "❌", gain: "0", count: 4000 }
+  { symbol: "❌", gain: "0", count: 3995 }
 ];
 let jackpotTickets = [];
 
