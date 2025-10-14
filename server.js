@@ -285,21 +285,29 @@ app.get("/api/buyCash", (req, res) => {
   const count = parseInt(req.query.count) || 1;
   let data = JSON.parse(fs.readFileSync(CASH_FILE, "utf8"));
   let available = data.filter(t => !t.sold);
+
   if (available.length < count) {
     regenerateCashTickets();
     data = JSON.parse(fs.readFileSync(CASH_FILE, "utf8"));
     available = data.filter(t => !t.sold);
   }
+
   const bought = [];
+
   for (let i = 0; i < count; i++) {
-    const t = available.splice(Math.floor(Math.random() * available.length), 1)[0];
+    const index = data.findIndex(tt => !tt.sold);
+    if (index === -1) break;
+
+    const t = data[index];
     t.sold = true;
     t.code = Math.floor(1000 + Math.random() * 9000).toString();
     bought.push({ id: t.id, code: t.code });
   }
+
   fs.writeFileSync(CASH_FILE, JSON.stringify(data, null, 2));
   res.json({ tickets: bought });
 });
+
 
 // 🎫 Lecture CASH
 app.get("/api/cash/ticket/:id", (req, res) => {
