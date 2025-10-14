@@ -314,13 +314,14 @@ app.get("/api/cash/ticket/:id", (req, res) => {
   res.json({ id: t.id, grid: t.grille, winners: t.gagnants, gain_total: t.gain_total });
 });
 
-// 🔍 Vérif admin CASH
+// 🔍 Vérif CASH
 app.get("/api/admin/checkCash/:id", (req, res) => {
   const data = JSON.parse(fs.readFileSync(CASH_FILE, "utf8"));
   const t = data.find(tt => tt.id === req.params.id);
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
   res.json(t);
 });
+
 
 // ---------------------------------------------
 // 🌐 PAGES HTML

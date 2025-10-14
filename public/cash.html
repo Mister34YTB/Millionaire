@@ -132,7 +132,7 @@
 <div class="ticket" id="ticket" style="display:none;">
   <div class="header">
     <img src="https://imgur.com/keJOCtB.png" class="logo-gdj">
-    <img src="https://imgur.com/2B7EcBK.png" class="logo-cash">
+    <img src="https://imgur.com/sDFV4vY.png" class="logo-cash">
     <div class="price">5€</div>
   </div>
 
@@ -148,6 +148,12 @@
 const params = new URLSearchParams(window.location.search);
 const id = params.get("id");
 const code = params.get("code");
+
+// 👉 fonction utilitaire pour formater les montants
+function formatGain(value) {
+  if (typeof value !== "number" && isNaN(parseInt(value))) return value;
+  return parseInt(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " €";
+}
 
 if (!id || !code) {
   document.getElementById("error").textContent = "❌ Lien invalide.";
@@ -179,15 +185,17 @@ function renderTicket(data) {
   const grid = document.getElementById("grid");
   const winners = document.getElementById("winners");
 
+  // 🟩 Grille principale
   data.grid.forEach(cell => {
     const div = document.createElement("div");
     div.className = "cell";
-    div.innerHTML = `<div>${cell.num}</div><div>${cell.gain}</div>`;
+    div.innerHTML = `<div>${cell.num}</div><div>${formatGain(cell.gain)}</div>`;
     grid.appendChild(div);
     addScratchLayer(div);
   });
 
-  data.winners.forEach(num => {
+  // 🟡 Numéros gagnants
+  data.gagnants.forEach(num => {
     const div = document.createElement("div");
     div.className = "winner";
     div.textContent = num;

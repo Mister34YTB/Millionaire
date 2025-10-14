@@ -27,11 +27,11 @@
 
   <!-- Choix du jeu -->
   <select id="gameType">
-  <option value="millionaire">Millionaire</option>
-  <option value="pof">Pile ou Face</option>
-  <option value="jackpot">Jackpot</option>
-</select>
-
+    <option value="millionaire">Millionaire</option>
+    <option value="pof">Pile ou Face</option>
+    <option value="jackpot">Jackpot</option>
+    <option value="cash">CASH</option>
+  </select>
 
   <!-- Numéro du ticket -->
   <input type="text" id="ticketId" placeholder="Numéro ex: 001">
@@ -39,44 +39,55 @@
 
   <div id="result"></div>
 
- <script>
-  async function checkTicket() {
-    const game = document.getElementById("gameType").value;
-    const id = document.getElementById("ticketId").value.trim();
-    if (!id) return alert("⚠️ Entre un numéro !");
+  <script>
+    async function checkTicket() {
+      const game = document.getElementById("gameType").value;
+      const id = document.getElementById("ticketId").value.trim();
+      if (!id) return alert("⚠️ Entre un numéro !");
 
-    let url = "";
-   if (game === "millionaire") {
-  url = `/api/admin/checkTicket/${id}`;
-} else if (game === "pof") {
-  url = `/api/admin/checkPOF/${id}`;
-} else if (game === "jackpot") {
-  url = `/api/admin/checkJackpot/${id}`;
-}
-
-
-    try {
-      const res = await fetch(url);
-      const data = await res.json();
-
-      if (res.ok) {
-        let msg = `🎫 [${game.toUpperCase()}] Ticket #${data.id} → `;
-
-        if (data.gain === "0" || data.gain === "PERDU") {
-          msg += "❌ PERDANT";
-        } else {
-          msg += `🏆 GAGNANT → ${data.gain}`;
-        }
-
-        if (data.used) msg += " (⚠️ déjà utilisé)";
-        document.getElementById("result").innerText = msg;
-      } else {
-        document.getElementById("result").innerText = `❌ Erreur: ${data.error || "inconnue"}`;
+      let url = "";
+      if (game === "millionaire") {
+        url = `/api/admin/checkTicket/${id}`;
+      } else if (game === "pof") {
+        url = `/api/admin/checkPOF/${id}`;
+      } else if (game === "jackpot") {
+        url = `/api/admin/checkJackpot/${id}`;
+      } else if (game === "cash") {
+        url = `/api/admin/checkCash/${id}`;
       }
-    } catch (e) {
-      document.getElementById("result").innerText = "❌ Erreur serveur";
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (res.ok) {
+          let msg = `🎫 [${game.toUpperCase()}] Ticket #${data.id} → `;
+
+          if (game === "cash") {
+            // Affichage spécial pour CASH
+            if (data.gain_total === 0) {
+              msg += "❌ PERDANT";
+            } else {
+              msg += `🏆 GAGNANT → ${data.gain_total} €`;
+            }
+          } else {
+            // Autres jeux
+            if (data.gain === "0" || data.gain === "PERDU") {
+              msg += "❌ PERDANT";
+            } else {
+              msg += `🏆 GAGNANT → ${data.gain}`;
+            }
+          }
+
+          if (data.used) msg += " (⚠️ déjà utilisé)";
+          document.getElementById("result").innerText = msg;
+        } else {
+          document.getElementById("result").innerText = `❌ Erreur: ${data.error || "inconnue"}`;
+        }
+      } catch (e) {
+        document.getElementById("result").innerText = "❌ Erreur serveur";
+      }
     }
-  }
-</script>
+  </script>
 </body>
 </html>
