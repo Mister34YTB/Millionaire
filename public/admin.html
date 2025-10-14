@@ -27,11 +27,11 @@
 
   <!-- Choix du jeu -->
   <select id="gameType">
-  <option value="millionaire">Millionaire</option>
-  <option value="pof">Pile ou Face</option>
-  <option value="jackpot">Jackpot</option>
-</select>
-
+    <option value="millionaire">Millionnaire</option>
+    <option value="pof">Pile ou Face</option>
+    <option value="jackpot">Jackpot</option>
+    <option value="cash">CASH</option>
+  </select>
 
   <!-- Numéro du ticket -->
   <input type="text" id="ticketId" placeholder="Numéro ex: 001">
@@ -39,21 +39,22 @@
 
   <div id="result"></div>
 
- <script>
+<script>
   async function checkTicket() {
     const game = document.getElementById("gameType").value;
     const id = document.getElementById("ticketId").value.trim();
     if (!id) return alert("⚠️ Entre un numéro !");
 
     let url = "";
-   if (game === "millionaire") {
-  url = `/api/admin/checkTicket/${id}`;
-} else if (game === "pof") {
-  url = `/api/admin/checkPOF/${id}`;
-} else if (game === "jackpot") {
-  url = `/api/admin/checkJackpot/${id}`;
-}
-
+    if (game === "millionaire") {
+      url = `/api/admin/checkTicket/${id}`;
+    } else if (game === "pof") {
+      url = `/api/admin/checkPOF/${id}`;
+    } else if (game === "jackpot") {
+      url = `/api/admin/checkJackpot/${id}`;
+    } else if (game === "cash") {
+      url = `/api/admin/checkCash/${id}`;
+    }
 
     try {
       const res = await fetch(url);
@@ -62,10 +63,23 @@
       if (res.ok) {
         let msg = `🎫 [${game.toUpperCase()}] Ticket #${data.id} → `;
 
-        if (data.gain === "0" || data.gain === "PERDU") {
-          msg += "❌ PERDANT";
+        // gestion du résultat selon type
+        if (game === "cash") {
+          // format € avec espace millier
+          const total = (data.gain_total || 0)
+            .toString()
+            .replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+          if (data.gain_total > 0) {
+            msg += `🏆 GAGNANT → ${total} €`;
+          } else {
+            msg += "❌ PERDANT";
+          }
         } else {
-          msg += `🏆 GAGNANT → ${data.gain}`;
+          if (data.gain === "0" || data.gain === "PERDU") {
+            msg += "❌ PERDANT";
+          } else {
+            msg += `🏆 GAGNANT → ${data.gain}`;
+          }
         }
 
         if (data.used) msg += " (⚠️ déjà utilisé)";

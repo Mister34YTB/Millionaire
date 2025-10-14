@@ -281,6 +281,117 @@ app.get("/api/jackpot/ticket/:id", (req, res) => {
   res.json(t);
 });
 
+// --------------------
+// 💶 CASH
+// --------------------
+const CASH_FILE = "tickets_cash.json";
+
+const CASH_DISTRIBUTION = [
+  { gain: 500000, count: 3 },
+  { gain: 100000, count: 3 },
+  { gain: 5000, count: 5 },
+  { gain: 1000, count: 15 },
+  { gain: 500, count: 40 },
+  { gain: 100, count: 100 },
+  { gain: 50, count: 250 },
+  { gain: 20, count: 500 },
+  { gain: 10, count: 800 },
+  { gain: 5, count: 784 },
+  { gain: 0, count: 5000 }
+];
+
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+function pickNumbers(count, exclude = []) {
+  const numbers = [];
+  while (numbers.length < count) {
+    const n = randomInt(1, 49);
+    if (!numbers.includes(n) && !exclude.includes(n)) numbers.push(n);
+  }
+  return numbers;
+}
+
+function regenerateCashTickets() {
+  console.log("🎲 Génération des tickets CASH...");
+  const tickets = [];
+  const pool = [];
+
+  CASH_DISTRIBUTION.forEach(d => {
+    for (let i = 0; i < d.count; i++) pool.push(d.gain);
+  });
+  shuffle(pool);
+
+  for (let i = 0; i < pool.length; i++) {
+    const gain = pool[i];
+    const gagnants = pickNumbers(5);
+    const grilleNums = pickNumbers(25);
+    const grille = grilleNums.map(n => ({
+      num: n,
+      gain: gagnants.includes(n) ? gain : pick([0, 5, 10, 20, 50, 100, 500, 1000])
+    }));
+
+    tickets.push({
+      id: String(i + 1).padStart(4, "0"),
+      gagnants,
+      grille,
+      gain_total: gain,
+      sold: false,
+      used: false,
+      code: null
+    });
+  }
+
+  fs.writeFileSync(CASH_FILE, JSON.stringify(tickets, null, 2));
+  console.log(`✅ ${tickets.length} tickets CASH générés`);
+}
+
+if (!fs.existsSync(CASH_FILE)) regenerateCashTickets();
+
+// 🎫 Achat CASH
+app.get("/api/buyCash", (req, res) => {
+  const count = parseInt(req.query.count) || 1;
+  let data = JSON.parse(fs.readFileSync(CASH_FILE, "utf8"));
+  let available = data.filter(t => !t.sold);
+
+  if (available.length < count) {
+    regenerateCashTickets();
+    data = JSON.parse(fs.readFileSync(CASH_FILE, "utf8"));
+    available = data.filter(t => !t.sold);
+  }
+
+  const bought = [];
+  for (let i = 0; i < count; i++) {
+    const t = available.splice(Math.floor(Math.random() * available.length), 1)[0];
+    t.sold = true;
+    t.code = Math.floor(1000 + Math.random() * 9000).toString();
+    bought.push({ id: t.id, code: t.code });
+  }
+
+  fs.writeFileSync(CASH_FILE, JSON.stringify(data, null, 2));
+  res.json({ tickets: bought });
+});
+
+// 🎫 Lecture CASH
+app.get("/api/cash/ticket/:id", (req, res) => {
+  const { code, validate } = req.query;
+  const data = JSON.parse(fs.readFileSync(CASH_FILE, "utf8"));
+  const t = data.find(tt => tt.id === req.params.id);
+
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+  if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
+
+  if (validate === "true") {
+    if (t.used) return res.status(403).json({ error: "Ticket déjà utilisé" });
+    t.used = true;
+    fs.writeFileSync(CASH_FILE, JSON.stringify(data, null, 2));
+  }
+
+  res.json(t);
+});
 
 // --------------------
 // ADMIN
@@ -310,13 +421,24 @@ app.get("/api/admin/checkJackpot/:id", (req, res) => {
   res.json(t);
 });
 
+// 🔍 Vérif CASH
+app.get("/api/admin/checkCash/:id", (req, res) => {
+  const data = JSON.parse(fs.readFileSync(CASH_FILE, "utf8"));
+  const t = data.find(tt => tt.id === req.params.id);
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+  res.json(t);
+});
+
 // 🔄 Reset complet
 app.post("/api/admin/reset", (req, res) => {
   regenerateTickets();
   regeneratePOFTickets();
   regenerateJackpotTickets();
+  regenerateCashTickets();
   res.json({ success: true, message: "🎟️ Tous les tickets régénérés." });
 });
+
+
 
 // --------------------
 // Pages
@@ -324,6 +446,7 @@ app.post("/api/admin/reset", (req, res) => {
 app.get("/ticket", (_, res) => res.sendFile(path.join(__dirname, "public", "ticket.html")));
 app.get("/pof", (_, res) => res.sendFile(path.join(__dirname, "public", "pof.html")));
 app.get("/jackpot", (_, res) => res.sendFile(path.join(__dirname, "public", "jackpot.html")));
+app.get("/cash", (_, res) => res.sendFile(path.join(__dirname, "public", "cash.html")));
 app.get("/admin", (_, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
 app.get("/", (_, res) => res.redirect("/ticket"));
 
