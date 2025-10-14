@@ -124,6 +124,13 @@
     text-align: center;
     margin-top: 100px;
   }
+
+  #result {
+    margin-top: 20px;
+    font-size: 22px;
+    font-weight: bold;
+    text-align: center;
+  }
 </style>
 </head>
 <body>
@@ -144,12 +151,18 @@
   <div class="ticket-number" id="ticketNum">Ticket #000</div>
 </div>
 
+<div id="result"></div>
+
 <script>
 const params = new URLSearchParams(window.location.search);
 const id = params.get("id");
 const code = params.get("code");
 
-// 👉 formatage propre des montants
+let revealedCount = 0;
+let totalCells = 0;
+let ticketData = null;
+
+// 👉 formatage des montants
 function formatGain(value) {
   const n = parseInt(value);
   if (isNaN(n)) return value;
@@ -157,28 +170,32 @@ function formatGain(value) {
 }
 
 if (!id || !code) {
-  document.getElementById("error").textContent = "❌ Lien invalide.";
-  document.getElementById("error").style.display = "block";
+  showError("❌ Lien invalide.");
 } else {
   fetch(`/api/cash/ticket/${id}?code=${code}`)
     .then(res => res.json())
     .then(data => {
       if (data.error) {
-        document.getElementById("error").textContent =
+        showError(
           data.error === "Ticket déjà utilisé"
             ? "🎟️ Ticket déjà gratté, veuillez en acheter un autre."
-            : "❌ Erreur: " + data.error;
-        document.getElementById("error").style.display = "block";
+            : "❌ Erreur: " + data.error
+        );
         return;
       }
+      ticketData = data;
       renderTicket(data);
     })
-    .catch(() => {
-      document.getElementById("error").textContent = "⚠️ Erreur serveur.";
-      document.getElementById("error").style.display = "block";
-    });
+    .catch(() => showError("⚠️ Erreur serveur."));
 }
 
+function showError(msg) {
+  const e = document.getElementById("error");
+  e.textContent = msg;
+  e.style.display = "block";
+}
+
+// 🎨 affichage du ticket
 function renderTicket(data) {
   document.getElementById("ticket").style.display = "block";
   document.getElementById("ticketNum").textContent = `Ticket #${data.id}`;
@@ -203,9 +220,11 @@ function renderTicket(data) {
     grid.appendChild(div);
     addScratchLayer(div);
   });
+
+  totalCells = data.grille.length + data.gagnants.length;
 }
 
-// 🎨 Gestion du grattage
+// 🖌️ Effet grattage
 function addScratchLayer(el) {
   const canvas = document.createElement("canvas");
   canvas.className = "canvas-overlay";
@@ -233,21 +252,35 @@ function addScratchLayer(el) {
   }
 
   canvas.addEventListener("mousedown", () => (isDrawing = true));
-  canvas.addEventListener("mouseup", () => (isDrawing = false));
+  canvas.addEventListener("mouseup", stopDrawing);
   canvas.addEventListener("mousemove", draw);
 
-  canvas.addEventListener("touchstart", e => {
-    isDrawing = true;
-    e.preventDefault();
-  });
-  canvas.addEventListener("touchend", e => {
+  canvas.addEventListener("touchstart", e => { isDrawing = true; e.preventDefault(); });
+  canvas.addEventListener("touchend", stopDrawing);
+  canvas.addEventListener("touchmove", e => { draw(e); e.preventDefault(); });
+
+  function stopDrawing() {
     isDrawing = false;
-    e.preventDefault();
-  });
-  canvas.addEventListener("touchmove", e => {
-    draw(e);
-    e.preventDefault();
-  });
+    revealedCount++;
+    if (revealedCount >= totalCells) validateTicket();
+  }
+}
+
+// ✅ Validation automatique après grattage
+function validateTicket() {
+  fetch(`/api/cash/ticket/${ticketData.id}?code=${ticketData.code}&validate=true`)
+    .then(res => res.json())
+    .then(() => {
+      const total = ticketData.gain_total || 0;
+      if (total > 0) {
+        document.getElementById("result").textContent = `🏆 GAGNÉ : ${formatGain(total)} !`;
+      } else {
+        document.getElementById("result").textContent = `❌ PERDU`;
+      }
+    })
+    .catch(() => {
+      document.getElementById("result").textContent = "⚠️ Erreur validation ticket.";
+    });
 }
 </script>
 </body>
