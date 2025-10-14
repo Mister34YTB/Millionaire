@@ -159,6 +159,166 @@ function regenerateJackpotTickets() {
   fs.writeFileSync(JACKPOT_FILE, JSON.stringify(jackpotTickets, null, 2));
 }
 
+// ---------------------------------------------
+//  🎟️  CASH - Nouveau jeu de grattage
+// ---------------------------------------------
+const fs = require("fs");
+
+const CASH_FILE = "tickets_cash.json";
+const TOTAL_TICKETS = 7500;
+const WINNING_TICKETS = 2500;
+const LOSING_TICKETS = TOTAL_TICKETS - WINNING_TICKETS;
+
+// 💰 Tableau officiel des lots
+const CASH_DISTRIBUTION = [
+  { gain: 500000, count: 3 },
+  { gain: 100000, count: 3 },
+  { gain: 5000, count: 5 },
+  { gain: 1000, count: 15 },
+  { gain: 500, count: 40 },
+  { gain: 100, count: 100 },
+  { gain: 50, count: 250 },
+  { gain: 20, count: 500 },
+  { gain: 10, count: 800 },
+  { gain: 5, count: 784 },
+];
+
+// 🧮 Combinaisons autorisées
+const CASH_COMBOS = {
+  500000: [[500000]],
+  100000: [[100000]],
+  5000: [[5000], [1000, 1000, 1000, 1000, 1000]],
+  1000: [[1000], [500, 500]],
+  500: [[500], [100, 100, 100, 100, 100]],
+  100: [[100], [20, 20, 20, 20, 20]],
+  50: [[50], [20, 20, 10]],
+  20: [[20], [10, 10]],
+  10: [[10]],
+  5: [[5]],
+};
+
+// Gains visibles possibles sur la grille
+const GRID_GAINS = [5, 10, 20, 50, 100, 500, 1000, 5000, 100000, 500000];
+
+// -------------------------------------------------
+//  UTILITAIRES
+// -------------------------------------------------
+function shuffle(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function pickNumbers(count, exclude = []) {
+  const numbers = [];
+  while (numbers.length < count) {
+    const n = randomInt(1, 49);
+    if (!numbers.includes(n) && !exclude.includes(n)) numbers.push(n);
+  }
+  return numbers;
+}
+
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// -------------------------------------------------
+//  GÉNÉRATION DU FICHIER
+// -------------------------------------------------
+function regenerateCashTickets() {
+  console.log("🎲 Génération des tickets CASH...");
+  let tickets = [];
+
+  // Crée la liste des tickets gagnants selon la distribution
+  const winPool = [];
+  CASH_DISTRIBUTION.forEach(d => {
+    for (let i = 0; i < d.count; i++) winPool.push(d.gain);
+  });
+  shuffle(winPool);
+
+  // Génération des tickets gagnants
+  for (let i = 0; i < WINNING_TICKETS; i++) {
+    const gainTotal = winPool[i];
+    const combos = CASH_COMBOS[gainTotal];
+    const combo = pick(combos);
+
+    // 1️⃣ Génère les numéros gagnants (5)
+    const winningNums = pickNumbers(5);
+
+    // 2️⃣ Génère la grille principale (25)
+    const gridNums = pickNumbers(25);
+
+    // 3️⃣ Place les correspondances selon la combinaison choisie
+    const grid = [];
+    const usedNums = [];
+
+    // Commence avec des gains aléatoires pour la grille
+    for (let g = 0; g < 25; g++) {
+      grid.push({
+        num: gridNums[g],
+        gain: pick(GRID_GAINS)
+      });
+    }
+
+    // Sélectionne autant de numéros gagnants à placer dans la grille que la longueur de la combinaison
+    const winnersToPlace = pickNumbers(combo.length, []); // indices de 1–49 arbitraires
+    for (let j = 0; j < combo.length; j++) {
+      const numToUse = winningNums[j]; // le j-ième numéro gagnant
+      const cellIndex = randomInt(0, 24);
+
+      grid[cellIndex].num = numToUse;
+      grid[cellIndex].gain = combo[j];
+      usedNums.push(numToUse);
+    }
+
+    tickets.push({
+      id: String(i + 1).padStart(4, "0"),
+      gagnants: winningNums,
+      grille: grid,
+      combinaison: combo,
+      gain_total: gainTotal,
+      sold: false,
+      used: false,
+      code: null
+    });
+  }
+
+  // Génération des tickets perdants
+  for (let i = 0; i < LOSING_TICKETS; i++) {
+    const winningNums = pickNumbers(5);
+    const gridNums = pickNumbers(25, winningNums);
+    const grid = gridNums.map(n => ({
+      num: n,
+      gain: pick(GRID_GAINS)
+    }));
+
+    tickets.push({
+      id: String(WINNING_TICKETS + i + 1).padStart(4, "0"),
+      gagnants: winningNums,
+      grille: grid,
+      combinaison: [],
+      gain_total: 0,
+      sold: false,
+      used: false,
+      code: null
+    });
+  }
+
+  shuffle(tickets);
+  fs.writeFileSync(CASH_FILE, JSON.stringify(tickets, null, 2));
+  console.log(`✅ ${tickets.length} tickets CASH générés (${WINNING_TICKETS} gagnants, ${LOSING_TICKETS} perdants)`);
+}
+
+// Exécute la génération si le fichier n'existe pas
+if (!fs.existsSync(CASH_FILE)) regenerateCashTickets();
+
+
 // --------------------
 // Chargement initial
 // --------------------
