@@ -1,5 +1,5 @@
 // ==================================================
-// 🎰 Serveur GDJ - Version complète 4 jeux
+// 🎰 Serveur GDJ - Version complète 4 jeux (corrigé sans suppression)
 // ==================================================
 
 const express = require("express");
@@ -196,7 +196,7 @@ function regenerateJackpotTickets() {
 }
 
 // ==================================================
-// 💶 CASH (avec logique réaliste FDJ)
+// 💶 CASH (corrigé + logique gagnante réaliste)
 // ==================================================
 function regenerateCashTickets() {
   console.log("🎲 Génération des tickets CASH réalistes...");
@@ -214,31 +214,31 @@ function regenerateCashTickets() {
     const grilleNums = pickNumbers(25);
     const grille = [];
 
-    // PERDANT : aucun gagnant dans la grille
     if (gainTotal === 0) {
+      // 🎟️ PERDANT — aucun numéro gagnant présent
       grilleNums.forEach(num => {
-        const fauxGain = pick([0, 5, 10, 20, 50, 100, 500]);
+        const fauxGain = pick([0, 5, 10, 20, 50, 100]);
         grille.push({ num, gain: fauxGain });
       });
     } else {
-      // GAGNANT : répartir le gain total
+      // 🏆 GAGNANT — répartir le gain total sur 1 à 5 numéros
       const nbWinCases = pick([1, 2, 3, 4, 5]);
       const winNumbers = shuffle([...gagnants]).slice(0, nbWinCases);
 
-      const gainsPossibles = [5, 10, 20, 50, 100, 200, 500, 1000, 5000];
       let gainsDistrib = [];
       let reste = gainTotal;
+      const gainsPossibles = [5, 10, 20, 50, 100, 200, 500, 1000, 5000];
       while (reste > 0) {
         const possible = gainsPossibles.filter(g => g <= reste);
+        if (possible.length === 0) break;
         const val = pick(possible);
         gainsDistrib.push(val);
         reste -= val;
-        if (reste <= 0) break;
       }
+
+      // équilibrer le nombre de gains avec les numéros gagnants
       gainsDistrib = gainsDistrib.slice(0, nbWinCases);
-      while (gainsDistrib.length < nbWinCases) {
-        gainsDistrib.push(5);
-      }
+      while (gainsDistrib.length < nbWinCases) gainsDistrib.push(5);
 
       grilleNums.forEach(num => {
         if (winNumbers.includes(num)) {
@@ -277,8 +277,6 @@ if (!fs.existsSync(CASH_FILE)) regenerateCashTickets();
 // ==================================================
 // 🧾 Routes API
 // ==================================================
-
-// Achat / Lecture pour chaque jeu (inchangé)
 function makeBuyEndpoint(file, regenFunc) {
   return (req, res) => {
     const count = parseInt(req.query.count) || 1;
