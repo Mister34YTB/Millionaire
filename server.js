@@ -215,25 +215,40 @@ function pickNumbers(count, exclude = []) {
 
 function regenerateCashTickets() {
   console.log("🎲 Génération des tickets CASH...");
-  let tickets = [];
+  const tickets = [];
+
+  // Crée le pool des gains
   const winPool = [];
   CASH_DISTRIBUTION.forEach(d => {
     for (let i = 0; i < d.count; i++) winPool.push(d.gain);
   });
   shuffle(winPool);
 
-  // Gagnants
+  // --- GAGNANTS ---
   for (let i = 0; i < WINNING_TICKETS; i++) {
     const gainTotal = winPool[i];
     const combo = pick(CASH_COMBOS[gainTotal]);
     const winningNums = pickNumbers(5);
-    const gridNums = pickNumbers(25);
-    const grid = gridNums.map(n => ({ num: n, gain: pick(GRID_GAINS) }));
-    for (let j = 0; j < combo.length; j++) {
-      const cellIndex = randomInt(0, 24);
-      grid[cellIndex].num = winningNums[j];
-      grid[cellIndex].gain = combo[j];
+    
+    // ⚙️ Sélectionne SEULEMENT les numéros gagnants utilisés dans la combinaison
+    const usedWinners = [];
+    while (usedWinners.length < combo.length) {
+      const n = pick(winningNums);
+      if (!usedWinners.includes(n)) usedWinners.push(n);
     }
+
+    // Crée une grille de 25 numéros sans doublons
+    const available = pickNumbers(25 - usedWinners.length, winningNums);
+    const gridNums = [...available, ...usedWinners];
+    shuffle(gridNums);
+
+    const grid = gridNums.map(n => ({
+      num: n,
+      gain: usedWinners.includes(n)
+        ? combo[usedWinners.indexOf(n)]
+        : pick(GRID_GAINS)
+    }));
+
     tickets.push({
       id: String(i + 1).padStart(4, "0"),
       gagnants: winningNums,
@@ -246,11 +261,12 @@ function regenerateCashTickets() {
     });
   }
 
-  // Perdants
+  // --- PERDANTS ---
   for (let i = 0; i < LOSING_TICKETS; i++) {
     const winningNums = pickNumbers(5);
     const gridNums = pickNumbers(25, winningNums);
     const grid = gridNums.map(n => ({ num: n, gain: pick(GRID_GAINS) }));
+
     tickets.push({
       id: String(WINNING_TICKETS + i + 1).padStart(4, "0"),
       gagnants: winningNums,
@@ -267,6 +283,7 @@ function regenerateCashTickets() {
   console.log(`✅ ${tickets.length} tickets CASH générés`);
 }
 
+
 if (!fs.existsSync(CASH_FILE)) regenerateCashTickets();
 
 // ---------------------------------------------
@@ -281,6 +298,12 @@ if (!fs.existsSync(JACKPOT_FILE)) regenerateJackpotTickets();
 // ---------------------------------------------
 
 // 🎫 Achat CASH
+// Compatibilité avec les anciennes commandes du bot
+app.get("/api/buyC", (req, res) => res.redirect("/api/buyCash" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "")));
+app.get("/api/buyPof", (req, res) => res.redirect("/api/buyPOF" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "")));
+app.get("/api/buyJ", (req, res) => res.redirect("/api/buyJackpot" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "")));
+app.get("/api/buy", (req, res) => res.redirect("/api/buyTicket" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "")));
+
 app.get("/api/buyCash", (req, res) => {
   const count = parseInt(req.query.count) || 1;
   let data = JSON.parse(fs.readFileSync(CASH_FILE, "utf8"));
