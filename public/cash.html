@@ -194,14 +194,15 @@ function renderTicket(data) {
     addScratchLayer(div);
   });
 
-  // 🟡 Numéros gagnants
-  data.gagnants.forEach(num => {
+   // 🟡 Numéros gagnants (corrigé)
+  (data.winners || []).forEach(num => {
     const div = document.createElement("div");
     div.className = "winner";
     div.textContent = num;
     winners.appendChild(div);
     addScratchLayer(div);
   });
+
 }
 
 function addScratchLayer(el) {
