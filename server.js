@@ -353,6 +353,70 @@ app.get("/api/admin/checkCash/:id", (req, res) => {
   res.json(t);
 });
 
+// 🧾 ACHAT MILLIONAIRE
+app.get("/api/buyTicket", (req, res) => {
+  const count = parseInt(req.query.count) || 1;
+  let data = JSON.parse(fs.readFileSync(TICKET_FILE, "utf8"));
+  const available = data.filter(t => !t.sold);
+
+  if (available.length < count) return res.status(400).json({ error: "Plus de tickets disponibles." });
+
+  const bought = [];
+  for (let i = 0; i < count; i++) {
+    const t = available[i];
+    if (!t) break;
+    t.sold = true;
+    t.code = Math.floor(1000 + Math.random() * 9000).toString();
+    bought.push({ id: t.id, code: t.code });
+  }
+
+  fs.writeFileSync(TICKET_FILE, JSON.stringify(data, null, 2));
+  res.json({ tickets: bought });
+});
+
+// 🪙 ACHAT PILE OU FACE
+app.get("/api/buyPOF", (req, res) => {
+  const count = parseInt(req.query.count) || 1;
+  let data = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
+  const available = data.filter(t => !t.sold);
+
+  if (available.length < count) return res.status(400).json({ error: "Plus de tickets disponibles." });
+
+  const bought = [];
+  for (let i = 0; i < count; i++) {
+    const t = available[i];
+    if (!t) break;
+    t.sold = true;
+    t.code = Math.floor(1000 + Math.random() * 9000).toString();
+    bought.push({ id: t.id, code: t.code });
+  }
+
+  fs.writeFileSync(POF_FILE, JSON.stringify(data, null, 2));
+  res.json({ tickets: bought });
+});
+
+// 🎰 ACHAT JACKPOT
+app.get("/api/buyJackpot", (req, res) => {
+  const count = parseInt(req.query.count) || 1;
+  let data = JSON.parse(fs.readFileSync(JACKPOT_FILE, "utf8"));
+  const available = data.filter(t => !t.sold);
+
+  if (available.length < count) return res.status(400).json({ error: "Plus de tickets disponibles." });
+
+  const bought = [];
+  for (let i = 0; i < count; i++) {
+    const t = available[i];
+    if (!t) break;
+    t.sold = true;
+    t.code = Math.floor(1000 + Math.random() * 9000).toString();
+    bought.push({ id: t.id, code: t.code });
+  }
+
+  fs.writeFileSync(JACKPOT_FILE, JSON.stringify(data, null, 2));
+  res.json({ tickets: bought });
+});
+
+
 
 // ---------------------------------------------
 // 🌐 PAGES HTML
