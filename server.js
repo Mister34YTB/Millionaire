@@ -93,16 +93,21 @@ function regeneratePOFTickets() {
   for (let i = 0; i < 5000; i++) {
     const type = Math.random() < 0.5 ? "PILE" : "FACE";
     let revealed = type === "PILE" ? "FACE" : "PILE";
-    let gain = "0";
-    if (Math.random() < WIN_PROB) {
-      const pool = [];
-      POF_DISTRIBUTION.forEach(d => {
-        for (let j = 0; j < d.count; j++) pool.push(d.gain);
-      });
-      shuffle(pool);
-      gain = pool[Math.floor(Math.random() * pool.length)];
-      revealed = type;
-    }
+  // Gain par défaut (factice)
+let gain = pick(["1€", "2€", "5€", "10€", "20€"]);
+if (Math.random() < WIN_PROB) {
+  const pool = [];
+  POF_DISTRIBUTION.forEach(d => {
+    for (let j = 0; j < d.count; j++) pool.push(d.gain);
+  });
+  shuffle(pool);
+  gain = pool[Math.floor(Math.random() * pool.length)];
+  revealed = type; // ticket gagnant
+} else {
+  revealed = type === "PILE" ? "FACE" : "PILE"; // perdant, mais gain factice
+}
+
+
     pofTickets.push({
       id: String(i + 1).padStart(4, "0"),
       type,

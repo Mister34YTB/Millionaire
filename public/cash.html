@@ -149,10 +149,11 @@ const params = new URLSearchParams(window.location.search);
 const id = params.get("id");
 const code = params.get("code");
 
-// 👉 fonction utilitaire pour formater les montants
+// 👉 formatage propre des montants
 function formatGain(value) {
-  if (typeof value !== "number" && isNaN(parseInt(value))) return value;
-  return parseInt(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " €";
+  const n = parseInt(value);
+  if (isNaN(n)) return value;
+  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " €";
 }
 
 if (!id || !code) {
@@ -185,25 +186,26 @@ function renderTicket(data) {
   const grid = document.getElementById("grid");
   const winners = document.getElementById("winners");
 
-  // 🟩 Grille principale
-  data.grid.forEach(cell => {
-    const div = document.createElement("div");
-    div.className = "cell";
-    div.innerHTML = `<div>${cell.num}</div><div>${formatGain(cell.gain)}</div>`;
-    grid.appendChild(div);
-    addScratchLayer(div);
-  });
-
-   // 🟡 Numéros gagnants (corrigé)
-  (data.winners || []).forEach(num => {
+  // 🟨 Numéros gagnants
+  data.gagnants.forEach(num => {
     const div = document.createElement("div");
     div.className = "winner";
     div.textContent = num;
     winners.appendChild(div);
     addScratchLayer(div);
   });
+
+  // 🟩 Grille principale
+  data.grille.forEach(cell => {
+    const div = document.createElement("div");
+    div.className = "cell";
+    div.innerHTML = `<div>${cell.num}</div><div>${formatGain(cell.gain)}</div>`;
+    grid.appendChild(div);
+    addScratchLayer(div);
+  });
 }
 
+// 🎨 Gestion du grattage
 function addScratchLayer(el) {
   const canvas = document.createElement("canvas");
   canvas.className = "canvas-overlay";
@@ -221,9 +223,9 @@ function addScratchLayer(el) {
 
   function draw(e) {
     if (!isDrawing) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    const r = canvas.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
     ctx.globalCompositeOperation = "destination-out";
     ctx.beginPath();
     ctx.arc(x, y, 12, 0, Math.PI * 2);
