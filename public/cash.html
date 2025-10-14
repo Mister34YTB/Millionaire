@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Ticket CASH - GDJ</title>
+<style>
+  body {
+    background: #ff8c00;
+    font-family: 'Arial Black', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    margin: 0;
+    padding: 20px;
+  }
+
+  .ticket {
+    position: relative;
+    width: 600px;
+    background: linear-gradient(#fca835, #f57c00);
+    border-radius: 15px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    padding: 20px;
+    overflow: hidden;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .header img.logo-gdj {
+    width: 80px;
+  }
+
+  .header img.logo-cash {
+    width: 250px;
+  }
+
+  .price {
+    font-size: 24px;
+    font-weight: bold;
+    color: #4B0082;
+    background: white;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    text-align: center;
+    line-height: 60px;
+  }
+
+  .content {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 15px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    background: #026b28;
+    padding: 10px;
+    border-radius: 10px;
+    flex: 1;
+  }
+
+  .cell {
+    position: relative;
+    background: #1e8a3a;
+    color: #fff;
+    font-size: 16px;
+    border-radius: 8px;
+    text-align: center;
+    padding: 10px 0;
+    user-select: none;
+  }
+
+  .winners {
+    background: #f1d52b;
+    border-radius: 10px;
+    padding: 10px;
+    margin-left: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-evenly;
+  }
+
+  .winner {
+    position: relative;
+    width: 70px;
+    height: 70px;
+    background: #fff;
+    border-radius: 50%;
+    font-size: 22px;
+    font-weight: bold;
+    color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .canvas-overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    cursor: crosshair;
+  }
+
+  .ticket-number {
+    margin-top: 10px;
+    text-align: left;
+    font-weight: bold;
+    color: #222;
+  }
+
+  #error {
+    font-size: 22px;
+    color: red;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 100px;
+  }
+</style>
+</head>
+<body>
+<div id="error" style="display:none;"></div>
+
+<div class="ticket" id="ticket" style="display:none;">
+  <div class="header">
+    <img src="https://imgur.com/keJOCtB.png" class="logo-gdj">
+    <img src="https://imgur.com/2B7EcBK.png" class="logo-cash">
+    <div class="price">5€</div>
+  </div>
+
+  <div class="content">
+    <div class="grid" id="grid"></div>
+    <div class="winners" id="winners"></div>
+  </div>
+
+  <div class="ticket-number" id="ticketNum">Ticket #000</div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const id = params.get("id");
+const code = params.get("code");
+
+if (!id || !code) {
+  document.getElementById("error").textContent = "❌ Lien invalide.";
+  document.getElementById("error").style.display = "block";
+} else {
+  fetch(`/api/cash/ticket/${id}?code=${code}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) {
+        document.getElementById("error").textContent =
+          data.error === "Ticket déjà utilisé"
+            ? "🎟️ Ticket déjà gratté, veuillez en acheter un autre."
+            : "❌ Erreur: " + data.error;
+        document.getElementById("error").style.display = "block";
+        return;
+      }
+      renderTicket(data);
+    })
+    .catch(() => {
+      document.getElementById("error").textContent = "⚠️ Erreur serveur.";
+      document.getElementById("error").style.display = "block";
+    });
+}
+
+function renderTicket(data) {
+  document.getElementById("ticket").style.display = "block";
+  document.getElementById("ticketNum").textContent = `Ticket #${data.id}`;
+
+  const grid = document.getElementById("grid");
+  const winners = document.getElementById("winners");
+
+  data.grid.forEach(cell => {
+    const div = document.createElement("div");
+    div.className = "cell";
+    div.innerHTML = `<div>${cell.num}</div><div>${cell.gain}</div>`;
+    grid.appendChild(div);
+    addScratchLayer(div);
+  });
+
+  data.winners.forEach(num => {
+    const div = document.createElement("div");
+    div.className = "winner";
+    div.textContent = num;
+    winners.appendChild(div);
+    addScratchLayer(div);
+  });
+}
+
+function addScratchLayer(el) {
+  const canvas = document.createElement("canvas");
+  canvas.className = "canvas-overlay";
+  el.appendChild(canvas);
+
+  const ctx = canvas.getContext("2d");
+  const rect = el.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+
+  ctx.fillStyle = "#999";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  let isDrawing = false;
+
+  function draw(e) {
+    if (!isDrawing) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.beginPath();
+    ctx.arc(x, y, 12, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  canvas.addEventListener("mousedown", () => (isDrawing = true));
+  canvas.addEventListener("mouseup", () => (isDrawing = false));
+  canvas.addEventListener("mousemove", draw);
+
+  canvas.addEventListener("touchstart", e => {
+    isDrawing = true;
+    e.preventDefault();
+  });
+  canvas.addEventListener("touchend", e => {
+    isDrawing = false;
+    e.preventDefault();
+  });
+  canvas.addEventListener("touchmove", e => {
+    draw(e);
+    e.preventDefault();
+  });
+}
+</script>
+</body>
+</html>
