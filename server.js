@@ -159,6 +159,8 @@ function regenerateJackpotTickets() {
   fs.writeFileSync(JACKPOT_FILE, JSON.stringify(jackpotTickets, null, 2));
 }
 
+
+
 // --------------------
 // Chargement initial
 // --------------------
