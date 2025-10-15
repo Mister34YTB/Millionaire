@@ -246,7 +246,7 @@ app.get("/api/buyPOF", (req, res) => {
   res.json({ tickets: bought });
 });
 
-// 🪙 Lecture Pile ou Face (1er clic = verrouillage immédiat)
+// 🪙 Lecture Pile ou Face (affichage du ticket, sans encore le bloquer)
 app.get("/api/pof/ticket/:id", (req, res) => {
   const { code } = req.query;
   const data = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
@@ -255,17 +255,29 @@ app.get("/api/pof/ticket/:id", (req, res) => {
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
   if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
 
-  // 🧱 Si déjà utilisé → bloqué directement
   if (t.used) {
     return res.status(403).json({ error: "Ticket déjà utilisé. Veuillez en acheter un autre." });
   }
 
-  // ✅ Premier accès → autorisé, mais on verrouille immédiatement
-  t.used = true;
-  fs.writeFileSync(POF_FILE, JSON.stringify(data, null, 2));
-
+  // 🔸 Ne pas encore le marquer comme utilisé ici
   res.json(t);
 });
+
+// ✅ Validation automatique après affichage du ticket
+app.post("/api/pof/use/:id", (req, res) => {
+  const { code } = req.query;
+  const data = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
+  const t = data.find(tt => tt.id === req.params.id);
+
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+  if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
+  if (t.used) return res.status(403).json({ error: "Ticket déjà utilisé" });
+
+  t.used = true;
+  fs.writeFileSync(POF_FILE, JSON.stringify(data, null, 2));
+  res.json({ success: true });
+});
+
 
 
 
@@ -291,7 +303,7 @@ app.get("/api/buyJackpot", (req, res) => {
   res.json({ tickets: bought });
 });
 
-// 🎰 Lecture Jackpot (1er clic = verrouillage immédiat)
+// 🎰 Lecture Jackpot (affiche le ticket)
 app.get("/api/jackpot/ticket/:id", (req, res) => {
   const { code } = req.query;
   const data = JSON.parse(fs.readFileSync(JACKPOT_FILE, "utf8"));
@@ -304,11 +316,24 @@ app.get("/api/jackpot/ticket/:id", (req, res) => {
     return res.status(403).json({ error: "Ticket déjà utilisé. Veuillez en acheter un autre." });
   }
 
-  t.used = true;
-  fs.writeFileSync(JACKPOT_FILE, JSON.stringify(data, null, 2));
-
   res.json(t);
 });
+
+// ✅ Validation automatique après affichage
+app.post("/api/jackpot/use/:id", (req, res) => {
+  const { code } = req.query;
+  const data = JSON.parse(fs.readFileSync(JACKPOT_FILE, "utf8"));
+  const t = data.find(tt => tt.id === req.params.id);
+
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+  if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
+  if (t.used) return res.status(403).json({ error: "Ticket déjà utilisé" });
+
+  t.used = true;
+  fs.writeFileSync(JACKPOT_FILE, JSON.stringify(data, null, 2));
+  res.json({ success: true });
+});
+
 
 
 
