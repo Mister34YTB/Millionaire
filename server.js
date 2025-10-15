@@ -62,7 +62,9 @@ function shuffle(arr) {
     const j = Math.floor(Math.random() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
+  return arr; // ✅ <- AJOUTER CETTE LIGNE
 }
+
 
 // --------------------
 // MILLIONNAIRE
@@ -348,46 +350,50 @@ function regenerateCashTickets() {
     const grilleNums = pickNumbers(25);
     const grille = [];
 
-    // 🎯 Probabilité d’un ticket gagnant
-    const isWin = Math.random() < 0.20; // 1 sur 5
+    // 1 chance sur 5 d’être gagnant
+    const isWin = Math.random() < 0.20;
 
     if (!isWin || gainTotal === 0) {
-      // 🎟️ Ticket perdant : aucun gagnant présent
+      // ❌ Ticket perdant : aucun gagnant présent
       grilleNums.forEach(num => {
         const fauxGain = pick([0, 5, 10, 20, 50, 100]);
         grille.push({ num, gain: fauxGain });
       });
     } else {
-      // 🏆 Ticket gagnant : nombre de numéros gagnants pondéré
+      // ✅ Ticket gagnant : définir le nombre de numéros gagnants
       const rand = Math.random() * 100;
       let nbWin;
-      if (rand < 30) nbWin = 1;
-      else if (rand < 40) nbWin = 2;
-      else if (rand < 47) nbWin = 3;
-      else if (rand < 50) nbWin = 4;
-      else nbWin = 5;
+      if (rand < 30) nbWin = 1;          // 30 %
+      else if (rand < 40) nbWin = 2;     // 10 %
+      else if (rand < 47) nbWin = 3;     // 7 %
+      else if (rand < 50) nbWin = 4;     // 3 %
+      else nbWin = 5;                    // 1 %
 
       const winNumbers = shuffle([...gagnants]).slice(0, nbWin);
 
-      // 💰 Répartition des gains sur les cases gagnantes
+      // Répartition des gains (pondérée)
       const gainsDistrib = [];
       let reste = gainTotal;
-      const steps = nbWin;
-      for (let j = 0; j < steps; j++) {
-        if (j === steps - 1) gainsDistrib.push(reste);
-        else {
-          const part = Math.max(5, Math.round(reste / (steps + randomInt(-1, 1))));
+      for (let j = 0; j < nbWin; j++) {
+        if (j === nbWin - 1) {
+          gainsDistrib.push(reste);
+        } else {
+          // on divise le total en parts aléatoires cohérentes
+          const partMin = Math.max(5, Math.floor(gainTotal / (nbWin * 2)));
+          const partMax = Math.floor(gainTotal / nbWin);
+          const part = randomInt(partMin, partMax);
           gainsDistrib.push(part);
           reste -= part;
         }
       }
 
-      // 🧩 Construction de la grille
+      // Construction de la grille
       grilleNums.forEach(num => {
         if (winNumbers.includes(num)) {
           const g = gainsDistrib.pop() || 0;
           grille.push({ num, gain: g });
         } else {
+          // gains fictifs sur les autres cases
           const fauxGain = pick([0, 5, 10, 20, 50, 100]);
           grille.push({ num, gain: fauxGain });
         }
@@ -406,8 +412,9 @@ function regenerateCashTickets() {
   }
 
   fs.writeFileSync(CASH_FILE, JSON.stringify(tickets, null, 2));
-  console.log(`✅ ${tickets.length} tickets CASH générés (logique corrigée)`);
+  console.log(`✅ ${tickets.length} tickets CASH générés avec logique FDJ réaliste`);
 }
+
 
 
 if (!fs.existsSync(CASH_FILE)) regenerateCashTickets();
