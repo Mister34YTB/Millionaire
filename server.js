@@ -86,35 +86,56 @@ function regenerateTickets() {
 }
 
 // --------------------
-// PILE OU FACE
+// 🪙 PILE OU FACE (corrigé avec gains fictifs pour perdants + flag realWin)
 // --------------------
 function regeneratePOFTickets() {
   const pofTickets = [];
+
+  // Tableau des gains possibles pour les vrais gagnants
+  const pool = [];
+  POF_DISTRIBUTION.forEach(d => {
+    for (let j = 0; j < d.count; j++) pool.push(d.gain);
+  });
+  shuffle(pool);
+
   for (let i = 0; i < 5000; i++) {
     const type = Math.random() < 0.5 ? "PILE" : "FACE";
-    let revealed = type === "PILE" ? "FACE" : "PILE";
-    let gain = "0";
-    if (Math.random() < WIN_PROB) {
-      const pool = [];
-      POF_DISTRIBUTION.forEach(d => {
-        for (let j = 0; j < d.count; j++) pool.push(d.gain);
-      });
-      shuffle(pool);
-      gain = pool[Math.floor(Math.random() * pool.length)];
+
+    let revealed;   // ce qu'on verra après grattage
+    let gain;       // le gain affiché
+    let realWin;    // booléen vrai/faux pour savoir si c’est un ticket réellement gagnant
+
+    const isWinner = Math.random() < WIN_PROB;
+
+    if (isWinner) {
+      // 🎯 Ticket gagnant → la face révélée correspond au type, gain réel du tableau
       revealed = type;
+      gain = pool[Math.floor(Math.random() * pool.length)];
+      realWin = true;
+    } else {
+      // ❌ Ticket perdant → la face révélée est l’inverse
+      revealed = type === "PILE" ? "FACE" : "PILE";
+      // Gain fictif pris dans le tableau (mais considéré comme non gagné)
+      const fakePool = POF_DISTRIBUTION.map(d => d.gain);
+      gain = fakePool[Math.floor(Math.random() * fakePool.length)];
+      realWin = false;
     }
+
     pofTickets.push({
       id: String(i + 1).padStart(4, "0"),
       type,
       revealed,
       gain,
+      realWin, // ✅ indique si c’est réellement gagnant
       sold: false,
       used: false,
       code: null
     });
   }
+
   fs.writeFileSync(POF_FILE, JSON.stringify(pofTickets, null, 2));
 }
+
 
 // --------------------
 // JACKPOT
