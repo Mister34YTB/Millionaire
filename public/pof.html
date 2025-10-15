@@ -142,10 +142,17 @@
       }
       const data = await res.json();
 
-      if (data.used) {
-        document.body.innerHTML = "<h1>⚠️ Ce ticket a déjà été utilisé.<br>Achetez un autre ticket.</h1>";
-        return;
-      }
+       if (data.used) {
+    document.body.innerHTML = `
+      <div style="text-align:center; font-family:Arial; margin-top:100px;">
+        <h1>🎟️ Ce ticket a déjà été gratté</h1>
+        <p>Achetez-en un nouveau pour rejouer</p>
+        <a href="/" style="color:blue; text-decoration:underline;">Retour à l'accueil</a>
+      </div>
+    `;
+    return;
+  }
+
 
       const coinTextEl = document.getElementById("coinText");
       const gainTextEl = document.getElementById("gainText");
@@ -161,12 +168,6 @@
       coinTextEl.style.color = "black";
       gainTextEl.style.color = "black";
 
-      // marquer utilisé côté serveur (si tu veux garder l’auto-destruction)
-      await fetch(`/api/pof/use/${id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code })
-      });
     }
 
     function initScratch(canvas) {

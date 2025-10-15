@@ -166,17 +166,13 @@ function formatGain(value) {
 if (!id || !code) {
   showError("❌ Lien invalide.");
 } else {
-  fetch(`/api/cash/ticket/${id}?code=${code}`)
+fetch(`/api/cash/ticket/${id}?code=${code}&validate=true`)
     .then(res => res.json())
     .then(data => {
-      if (data.error) {
-        showError(
-          data.error === "Ticket déjà utilisé"
-            ? "🎟️ Ticket déjà gratté, veuillez en acheter un autre."
-            : "❌ Erreur: " + data.error
-        );
-        return;
-      }
+    if (data.used) {
+  showError("🎟️ Ticket déjà gratté, veuillez en acheter un autre.");
+  return;
+}
       ticketData = data;
       renderTicket(data);
     })

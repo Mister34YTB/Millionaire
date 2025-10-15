@@ -90,36 +90,48 @@ function regenerateTickets() {
 // --------------------
 function regeneratePOFTickets() {
   const pofTickets = [];
-  for (let i = 0; i < 5000; i++) {
-    const type = Math.random() < 0.5 ? "PILE" : "FACE";
-    let revealed = type === "PILE" ? "FACE" : "PILE";
-  // Gain par défaut (factice)
-let gain = pick(["1€", "2€", "5€", "10€", "20€"]);
-if (Math.random() < WIN_PROB) {
   const pool = [];
+
+  // Prépare la distribution des vrais gains
   POF_DISTRIBUTION.forEach(d => {
     for (let j = 0; j < d.count; j++) pool.push(d.gain);
   });
   shuffle(pool);
-  gain = pool[Math.floor(Math.random() * pool.length)];
-  revealed = type; // ticket gagnant
-} else {
-  revealed = type === "PILE" ? "FACE" : "PILE"; // perdant, mais gain factice
-}
 
+  for (let i = 0; i < 5000; i++) {
+    const type = Math.random() < 0.5 ? "PILE" : "FACE";
+    let revealed;
+    let gain;
+
+    // 🎯 1 chance sur 8 d’être gagnant
+    const isWinner = Math.random() < WIN_PROB;
+
+    if (isWinner) {
+      // 🏆 GAGNANT → symbole révélé = le bon côté
+      revealed = type;
+      gain = pool[Math.floor(Math.random() * pool.length)];
+    } else {
+      // 💀 PERDANT → symbole révélé ≠ bon côté
+      revealed = type === "PILE" ? "FACE" : "PILE";
+      // gain fictif aléatoire parmi la distribution existante, mais pas un vrai gain
+      gain = pick(["1€", "2€", "5€", "10€", "20€"]);
+    }
 
     pofTickets.push({
       id: String(i + 1).padStart(4, "0"),
-      type,
-      revealed,
-      gain,
+      type,        // Côté du ticket choisi
+      revealed,    // Côté révélé
+      gain,        // Gain réel ou fictif
       sold: false,
       used: false,
       code: null
     });
   }
+
   fs.writeFileSync(POF_FILE, JSON.stringify(pofTickets, null, 2));
+  console.log("✅ Tickets PILE OU FACE générés (avec gains fictifs pour les perdants)");
 }
+
 
 // --------------------
 // JACKPOT
@@ -321,29 +333,72 @@ function pickNumbers(count, exclude = []) {
 }
 
 function regenerateCashTickets() {
-  console.log("🎲 Génération des tickets CASH...");
+  console.log("🎲 Génération des tickets CASH (logique FDJ réaliste)...");
+
   const tickets = [];
   const pool = [];
-
   CASH_DISTRIBUTION.forEach(d => {
     for (let i = 0; i < d.count; i++) pool.push(d.gain);
   });
   shuffle(pool);
 
   for (let i = 0; i < pool.length; i++) {
-    const gain = pool[i];
+    const gainTotal = pool[i];
     const gagnants = pickNumbers(5);
     const grilleNums = pickNumbers(25);
-    const grille = grilleNums.map(n => ({
-      num: n,
-      gain: gagnants.includes(n) ? gain : pick([0, 5, 10, 20, 50, 100, 500, 1000])
-    }));
+    const grille = [];
+
+    // 🎯 Probabilité d’un ticket gagnant
+    const isWin = Math.random() < 0.20; // 1 sur 5
+
+    if (!isWin || gainTotal === 0) {
+      // 🎟️ Ticket perdant : aucun gagnant présent
+      grilleNums.forEach(num => {
+        const fauxGain = pick([0, 5, 10, 20, 50, 100]);
+        grille.push({ num, gain: fauxGain });
+      });
+    } else {
+      // 🏆 Ticket gagnant : nombre de numéros gagnants pondéré
+      const rand = Math.random() * 100;
+      let nbWin;
+      if (rand < 30) nbWin = 1;
+      else if (rand < 40) nbWin = 2;
+      else if (rand < 47) nbWin = 3;
+      else if (rand < 50) nbWin = 4;
+      else nbWin = 5;
+
+      const winNumbers = shuffle([...gagnants]).slice(0, nbWin);
+
+      // 💰 Répartition des gains sur les cases gagnantes
+      const gainsDistrib = [];
+      let reste = gainTotal;
+      const steps = nbWin;
+      for (let j = 0; j < steps; j++) {
+        if (j === steps - 1) gainsDistrib.push(reste);
+        else {
+          const part = Math.max(5, Math.round(reste / (steps + randomInt(-1, 1))));
+          gainsDistrib.push(part);
+          reste -= part;
+        }
+      }
+
+      // 🧩 Construction de la grille
+      grilleNums.forEach(num => {
+        if (winNumbers.includes(num)) {
+          const g = gainsDistrib.pop() || 0;
+          grille.push({ num, gain: g });
+        } else {
+          const fauxGain = pick([0, 5, 10, 20, 50, 100]);
+          grille.push({ num, gain: fauxGain });
+        }
+      });
+    }
 
     tickets.push({
       id: String(i + 1).padStart(4, "0"),
       gagnants,
       grille,
-      gain_total: gain,
+      gain_total: gainTotal,
       sold: false,
       used: false,
       code: null
@@ -351,8 +406,9 @@ function regenerateCashTickets() {
   }
 
   fs.writeFileSync(CASH_FILE, JSON.stringify(tickets, null, 2));
-  console.log(`✅ ${tickets.length} tickets CASH générés`);
+  console.log(`✅ ${tickets.length} tickets CASH générés (logique corrigée)`);
 }
+
 
 if (!fs.existsSync(CASH_FILE)) regenerateCashTickets();
 

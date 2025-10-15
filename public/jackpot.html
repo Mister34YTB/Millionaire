@@ -234,16 +234,17 @@
     const res = await fetch(apiURL);
     const data = await res.json();
 
-    if (!res.ok || data.used) {
-      ticketEl.innerHTML = `
-        <h2 style='color:white;text-align:center;margin-top:250px'>
-          🎟️ Ce ticket a déjà été utilisé<br><br>
-          <a href='/api/buyJackpot?count=1' style='color:#00ff66;text-decoration:none'>
-            Achetez un nouveau ticket
-          </a>
-        </h2>`;
-      return;
-    }
+    if (data.used) {
+  document.body.innerHTML = `
+    <div style="text-align:center; font-family:Arial; margin-top:100px;">
+      <h1>🎰 Ce ticket Jackpot a déjà été gratté</h1>
+      <p>👉 Achetez-en un nouveau pour retenter votre chance.</p>
+      <a href="/" style="color:#00ff66; text-decoration:underline;">Retour à l'accueil</a>
+    </div>
+  `;
+  return;
+}
+
 
     document.getElementById("ticket-id").textContent = "#" + data.id;
 
