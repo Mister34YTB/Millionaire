@@ -349,13 +349,23 @@ app.get("/api/admin/checkTicket/:id", (req, res) => {
   res.json(t);
 });
 
-// 🔍 Vérif Pile ou Face
+// 🔍 Vérif Pile ou Face (corrigé)
 app.get("/api/admin/checkPOF/:id", (req, res) => {
   const data = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
   const t = data.find(tt => tt.id === req.params.id);
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
-  res.json(t);
+
+  // On renvoie le flag "realWin"
+  res.json({
+    id: t.id,
+    type: t.type,
+    revealed: t.revealed,
+    gain: t.gain,
+    realWin: t.realWin || false, // ✅ indique si c’est un vrai gagnant
+    used: t.used
+  });
 });
+
 
 // 🔍 Vérif Jackpot
 app.get("/api/admin/checkJackpot/:id", (req, res) => {
