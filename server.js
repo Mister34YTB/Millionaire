@@ -225,18 +225,25 @@ app.get("/api/buyPOF", (req, res) => {
   res.json({ tickets: bought });
 });
 
-// 🪙 Lecture Pile ou Face
+// 🪙 Lecture Pile ou Face (1er clic = grattage, 2e = bloqué)
 app.get("/api/pof/ticket/:id", (req, res) => {
-  const { code } = req.query;
+  const { code, validate } = req.query;
   const data = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
   const t = data.find(tt => tt.id === req.params.id);
+
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
   if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
-  if (t.used) return res.status(403).json({ error: "Ticket déjà utilisé" });
-  t.used = true;
-  fs.writeFileSync(POF_FILE, JSON.stringify(data, null, 2));
+
+  // 🧩 Si validate=true => on marque comme utilisé
+  if (validate === "true") {
+    if (t.used) return res.status(403).json({ error: "Ticket déjà utilisé" });
+    t.used = true;
+    fs.writeFileSync(POF_FILE, JSON.stringify(data, null, 2));
+  }
+
   res.json(t);
 });
+
 
 // 🎰 Achat Jackpot
 app.get("/api/buyJackpot", (req, res) => {
@@ -259,18 +266,24 @@ app.get("/api/buyJackpot", (req, res) => {
   res.json({ tickets: bought });
 });
 
-// 🎰 Lecture Jackpot
+// 🎰 Lecture Jackpot (1er clic = grattage, 2e = bloqué)
 app.get("/api/jackpot/ticket/:id", (req, res) => {
-  const { code } = req.query;
+  const { code, validate } = req.query;
   const data = JSON.parse(fs.readFileSync(JACKPOT_FILE, "utf8"));
   const t = data.find(tt => tt.id === req.params.id);
+
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
   if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
-  if (t.used) return res.status(403).json({ error: "Ticket déjà utilisé" });
-  t.used = true;
-  fs.writeFileSync(JACKPOT_FILE, JSON.stringify(data, null, 2));
+
+  if (validate === "true") {
+    if (t.used) return res.status(403).json({ error: "Ticket déjà utilisé" });
+    t.used = true;
+    fs.writeFileSync(JACKPOT_FILE, JSON.stringify(data, null, 2));
+  }
+
   res.json(t);
 });
+
 
 // --------------------
 // ADMIN
