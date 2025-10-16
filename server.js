@@ -292,10 +292,16 @@ app.get("/api/jackpot/ticket/:id", (req, res) => {
 
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
   if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
-  if (t.used) return res.status(403).json({ error: "Ticket déjà utilisé" }); // ⬅️ ajouté
+  if (t.used) return res.status(403).json({ error: "Ticket déjà utilisé" });
+  if (t.viewed) return res.status(403).json({ error: "Ticket déjà ouvert" }); // ⬅️ bloque refresh
+
+  // marquer comme vu immédiatement
+  t.viewed = true;
+  fs.writeFileSync(JACKPOT_FILE, JSON.stringify(data, null, 2));
 
   res.json(t);
 });
+
 
 
 // 🎰 Utilisation JACKPOT
