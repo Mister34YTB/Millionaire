@@ -86,56 +86,35 @@ function regenerateTickets() {
 }
 
 // --------------------
-// 🪙 PILE OU FACE (corrigé avec gains fictifs pour perdants + flag realWin)
+// PILE OU FACE
 // --------------------
 function regeneratePOFTickets() {
   const pofTickets = [];
-
-  // Tableau des gains possibles pour les vrais gagnants
-  const pool = [];
-  POF_DISTRIBUTION.forEach(d => {
-    for (let j = 0; j < d.count; j++) pool.push(d.gain);
-  });
-  shuffle(pool);
-
   for (let i = 0; i < 5000; i++) {
     const type = Math.random() < 0.5 ? "PILE" : "FACE";
-
-    let revealed;   // ce qu'on verra après grattage
-    let gain;       // le gain affiché
-    let realWin;    // booléen vrai/faux pour savoir si c’est un ticket réellement gagnant
-
-    const isWinner = Math.random() < WIN_PROB;
-
-    if (isWinner) {
-      // 🎯 Ticket gagnant → la face révélée correspond au type, gain réel du tableau
-      revealed = type;
+    let revealed = type === "PILE" ? "FACE" : "PILE";
+    let gain = "0";
+    if (Math.random() < WIN_PROB) {
+      const pool = [];
+      POF_DISTRIBUTION.forEach(d => {
+        for (let j = 0; j < d.count; j++) pool.push(d.gain);
+      });
+      shuffle(pool);
       gain = pool[Math.floor(Math.random() * pool.length)];
-      realWin = true;
-    } else {
-      // ❌ Ticket perdant → la face révélée est l’inverse
-      revealed = type === "PILE" ? "FACE" : "PILE";
-      // Gain fictif pris dans le tableau (mais considéré comme non gagné)
-      const fakePool = POF_DISTRIBUTION.map(d => d.gain);
-      gain = fakePool[Math.floor(Math.random() * fakePool.length)];
-      realWin = false;
+      revealed = type;
     }
-
     pofTickets.push({
       id: String(i + 1).padStart(4, "0"),
       type,
       revealed,
       gain,
-      realWin, // ✅ indique si c’est réellement gagnant
       sold: false,
       used: false,
       code: null
     });
   }
-
   fs.writeFileSync(POF_FILE, JSON.stringify(pofTickets, null, 2));
 }
-
 
 // --------------------
 // JACKPOT
@@ -246,37 +225,18 @@ app.get("/api/buyPOF", (req, res) => {
   res.json({ tickets: bought });
 });
 
-// 🪙 Lecture Pile ou Face — retourne le ticket, sans le marquer encore
+// 🪙 Lecture Pile ou Face
 app.get("/api/pof/ticket/:id", (req, res) => {
   const { code } = req.query;
   const data = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
   const t = data.find(tt => tt.id === req.params.id);
-
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
   if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
-
-  // si déjà utilisé, bloquer
   if (t.used) return res.status(403).json({ error: "Ticket déjà utilisé" });
-
-  // ⛔️ ici on ne marque PAS encore utilisé
-  res.json(t);
-});
-
-// ✅ nouvelle route pour marquer le ticket comme utilisé
-app.post("/api/pof/use/:id", (req, res) => {
-  const { code } = req.body;
-  const data = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
-  const t = data.find(tt => tt.id === req.params.id);
-
-  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
-  if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
-
   t.used = true;
   fs.writeFileSync(POF_FILE, JSON.stringify(data, null, 2));
-  res.json({ success: true });
+  res.json(t);
 });
-
-
 
 // 🎰 Achat Jackpot
 app.get("/api/buyJackpot", (req, res) => {
@@ -307,23 +267,10 @@ app.get("/api/jackpot/ticket/:id", (req, res) => {
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
   if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
   if (t.used) return res.status(403).json({ error: "Ticket déjà utilisé" });
-  res.json(t);
-});
-
-app.post("/api/jackpot/use/:id", (req, res) => {
-  const { code } = req.body;
-  const data = JSON.parse(fs.readFileSync(JACKPOT_FILE, "utf8"));
-  const t = data.find(tt => tt.id === req.params.id);
-  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
-  if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
   t.used = true;
   fs.writeFileSync(JACKPOT_FILE, JSON.stringify(data, null, 2));
-  res.json({ success: true });
+  res.json(t);
 });
-
-
-
-
 
 // --------------------
 // ADMIN
@@ -337,23 +284,13 @@ app.get("/api/admin/checkTicket/:id", (req, res) => {
   res.json(t);
 });
 
-// 🔍 Vérif Pile ou Face (corrigé)
+// 🔍 Vérif Pile ou Face
 app.get("/api/admin/checkPOF/:id", (req, res) => {
   const data = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
   const t = data.find(tt => tt.id === req.params.id);
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
-
-  // On renvoie le flag "realWin"
-  res.json({
-    id: t.id,
-    type: t.type,
-    revealed: t.revealed,
-    gain: t.gain,
-    realWin: t.realWin || false, // ✅ indique si c’est un vrai gagnant
-    used: t.used
-  });
+  res.json(t);
 });
-
 
 // 🔍 Vérif Jackpot
 app.get("/api/admin/checkJackpot/:id", (req, res) => {

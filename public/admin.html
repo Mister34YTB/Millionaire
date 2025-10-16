@@ -27,10 +27,11 @@
 
   <!-- Choix du jeu -->
   <select id="gameType">
-    <option value="millionaire">Millionnaire</option>
-    <option value="pof">Pile ou Face</option>
-    <option value="jackpot">Jackpot</option>
-  </select>
+  <option value="millionaire">Millionaire</option>
+  <option value="pof">Pile ou Face</option>
+  <option value="jackpot">Jackpot</option>
+</select>
+
 
   <!-- Numéro du ticket -->
   <input type="text" id="ticketId" placeholder="Numéro ex: 001">
@@ -38,20 +39,21 @@
 
   <div id="result"></div>
 
-<script>
+ <script>
   async function checkTicket() {
     const game = document.getElementById("gameType").value;
     const id = document.getElementById("ticketId").value.trim();
     if (!id) return alert("⚠️ Entre un numéro !");
 
     let url = "";
-    if (game === "millionaire") {
-      url = `/api/admin/checkTicket/${id}`;
-    } else if (game === "pof") {
-      url = `/api/admin/checkPOF/${id}`;
-    } else if (game === "jackpot") {
-      url = `/api/admin/checkJackpot/${id}`;
-    }
+   if (game === "millionaire") {
+  url = `/api/admin/checkTicket/${id}`;
+} else if (game === "pof") {
+  url = `/api/admin/checkPOF/${id}`;
+} else if (game === "jackpot") {
+  url = `/api/admin/checkJackpot/${id}`;
+}
+
 
     try {
       const res = await fetch(url);
@@ -60,27 +62,16 @@
       if (res.ok) {
         let msg = `🎫 [${game.toUpperCase()}] Ticket #${data.id} → `;
 
-        // --- LOGIQUE SELON TYPE DE JEU ---
-        if (game === "pof") {
-          if (data.realWin) {
-            msg += `🏆 GAGNANT → ${data.gain}`;
-          } else {
-            msg += `❌ PERDANT (gain fictif ${data.gain})`;
-          }
-        } else if (game === "jackpot" || game === "millionaire") {
-          if (data.gain === "0" || data.gain === "PERDU") {
-            msg += "❌ PERDANT";
-          } else {
-            msg += `🏆 GAGNANT → ${data.gain}`;
-          }
+        if (data.gain === "0" || data.gain === "PERDU") {
+          msg += "❌ PERDANT";
+        } else {
+          msg += `🏆 GAGNANT → ${data.gain}`;
         }
 
         if (data.used) msg += " (⚠️ déjà utilisé)";
         document.getElementById("result").innerText = msg;
-
       } else {
-        document.getElementById("result").innerText =
-          `❌ Erreur: ${data.error || "inconnue"}`;
+        document.getElementById("result").innerText = `❌ Erreur: ${data.error || "inconnue"}`;
       }
     } catch (e) {
       document.getElementById("result").innerText = "❌ Erreur serveur";
