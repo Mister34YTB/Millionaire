@@ -32,10 +32,7 @@
       height: 720px;
       border-radius: 20px;
       background: radial-gradient(circle at center, #00ff66 0%, #002b0f 70%, #000 100%);
-      box-shadow:
-        0 0 35px #00ff66,
-        0 0 70px #00ff66,
-        inset 0 0 30px #00ff66;
+      box-shadow: 0 0 35px #00ff66, 0 0 70px #00ff66, inset 0 0 30px #00ff66;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -234,17 +231,15 @@
     const res = await fetch(apiURL);
     const data = await res.json();
 
-    if (data.used) {
-  document.body.innerHTML = `
-    <div style="text-align:center; font-family:Arial; margin-top:100px;">
-      <h1>🎰 Ce ticket Jackpot a déjà été gratté</h1>
-      <p>👉 Achetez-en un nouveau pour retenter votre chance.</p>
-      <a href="/" style="color:#00ff66; text-decoration:underline;">Retour à l'accueil</a>
-    </div>
-  `;
-  return;
-}
-
+    if (data.error) {
+      document.body.innerHTML = `
+        <div style="text-align:center; font-family:Arial; margin-top:100px;">
+          <h1>❌ ${data.error}</h1>
+          <p>👉 Achetez un nouveau ticket pour rejouer.</p>
+          <a href="/" style="color:#00ff66; text-decoration:underline;">Retour à l'accueil</a>
+        </div>`;
+      return;
+    }
 
     document.getElementById("ticket-id").textContent = "#" + data.id;
 
@@ -269,10 +264,8 @@
       ctx.fillStyle = "#777";
       ctx.fillRect(0, 0, w, h);
 
-      const pixelData = ctx.getImageData(0, 0, w, h);
-      const totalPixels = pixelData.data.length / 4;
-      let clearedPixels = 0;
-      let lastCheck = 0;
+      const totalPixels = w * h;
+      let scratchedPixels = 0;
       let scratchedEnough = false;
 
       const scratch = (x, y) => {
@@ -285,14 +278,12 @@
 
       const checkProgress = () => {
         if (scratchedEnough) return;
-
         const imgData = ctx.getImageData(0, 0, w, h);
         let count = 0;
         for (let i = 3; i < imgData.data.length; i += 4) {
           if (imgData.data[i] === 0) count++;
         }
         const progress = count / totalPixels;
-
         if (progress >= 0.95) {
           scratchedEnough = true;
           fullyScratchedCount++;
@@ -305,10 +296,7 @@
 
       let isDrawing = false;
       canvas.addEventListener("mousedown", () => (isDrawing = true));
-      canvas.addEventListener("mouseup", () => {
-        isDrawing = false;
-        checkProgress();
-      });
+      canvas.addEventListener("mouseup", () => { isDrawing = false; checkProgress(); });
       canvas.addEventListener("mousemove", (e) => {
         if (!isDrawing || destroyed) return;
         const rect = canvas.getBoundingClientRect();
@@ -323,9 +311,15 @@
         ? `🎉 Félicitations ! Vous gagnez ${data.gain.replace(/[^\d€]/g, "")} !`
         : "😢 Perdu, retentez votre chance !";
 
-    // ✅ Attendre 5 secondes avant destruction et marquage
-    setTimeout(async () => {
+    // ✅ Marque le ticket utilisé sur le serveur
+    await fetch(useURL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code })
+    });
 
+    // ✅ Détruire visuellement après 5 secondes
+    setTimeout(() => {
       ticketEl.classList.add("destroyed");
       setTimeout(() => {
         ticketEl.innerHTML = `

@@ -246,7 +246,7 @@ app.get("/api/buyPOF", (req, res) => {
   res.json({ tickets: bought });
 });
 
-// 🪙 Lecture Pile ou Face (grattage + marquage immédiat)
+// 🪙 Lecture Pile ou Face — retourne le ticket, sans le marquer encore
 app.get("/api/pof/ticket/:id", (req, res) => {
   const { code } = req.query;
   const data = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
@@ -255,18 +255,14 @@ app.get("/api/pof/ticket/:id", (req, res) => {
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
   if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
 
-  // déjà utilisé → on bloque
+  // si déjà utilisé, bloquer
   if (t.used) return res.status(403).json({ error: "Ticket déjà utilisé" });
 
-  // ✅ première ouverture → on le marque utilisé
-  t.used = true;
-  fs.writeFileSync(POF_FILE, JSON.stringify(data, null, 2));
-
+  // ⛔️ ici on ne marque PAS encore utilisé
   res.json(t);
 });
 
-
-// 🪙 Marquer comme utilisé (appelé après grattage)
+// ✅ nouvelle route pour marquer le ticket comme utilisé
 app.post("/api/pof/use/:id", (req, res) => {
   const { code } = req.body;
   const data = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
@@ -279,6 +275,7 @@ app.post("/api/pof/use/:id", (req, res) => {
   fs.writeFileSync(POF_FILE, JSON.stringify(data, null, 2));
   res.json({ success: true });
 });
+
 
 
 // 🎰 Achat Jackpot
@@ -302,34 +299,23 @@ app.get("/api/buyJackpot", (req, res) => {
   res.json({ tickets: bought });
 });
 
-// 🎰 Lecture Jackpot (grattage + marquage immédiat)
+// 🎰 Lecture Jackpot
 app.get("/api/jackpot/ticket/:id", (req, res) => {
   const { code } = req.query;
   const data = JSON.parse(fs.readFileSync(JACKPOT_FILE, "utf8"));
   const t = data.find(tt => tt.id === req.params.id);
-
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
   if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
-
   if (t.used) return res.status(403).json({ error: "Ticket déjà utilisé" });
-
-  // ✅ première ouverture → on le marque utilisé
-  t.used = true;
-  fs.writeFileSync(JACKPOT_FILE, JSON.stringify(data, null, 2));
-
   res.json(t);
 });
 
-
-// 🎰 Marquer comme utilisé (appelé après grattage)
 app.post("/api/jackpot/use/:id", (req, res) => {
   const { code } = req.body;
   const data = JSON.parse(fs.readFileSync(JACKPOT_FILE, "utf8"));
   const t = data.find(tt => tt.id === req.params.id);
-
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
   if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
-
   t.used = true;
   fs.writeFileSync(JACKPOT_FILE, JSON.stringify(data, null, 2));
   res.json({ success: true });
