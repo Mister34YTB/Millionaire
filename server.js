@@ -96,7 +96,7 @@ function regeneratePOFTickets() {
   for (let i = 0; i < 5000; i++) {
     const type = Math.random() < 0.5 ? "PILE" : "FACE";
     let revealed = type === "PILE" ? "FACE" : "PILE";
-    let gain = "0";
+let gain = "PERDU";
 
     if (Math.random() < WIN_PROB) {
       const pool = [];
@@ -289,10 +289,14 @@ app.get("/api/jackpot/ticket/:id", (req, res) => {
   const { code } = req.query;
   const data = JSON.parse(fs.readFileSync(JACKPOT_FILE, "utf8"));
   const t = data.find(tt => tt.id === req.params.id);
+
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
   if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
+  if (t.used) return res.status(403).json({ error: "Ticket déjà utilisé" }); // ⬅️ ajouté
+
   res.json(t);
 });
+
 
 // 🎰 Utilisation JACKPOT
 app.post("/api/jackpot/use/:id", (req, res) => {
@@ -310,15 +314,30 @@ app.post("/api/jackpot/use/:id", (req, res) => {
 // ---------------------------------------------
 // 🧾 ADMIN
 // ---------------------------------------------
-app.get("/api/admin/checkTicket/:id", (_, res) =>
-  res.json(JSON.parse(fs.readFileSync(TICKET_FILE, "utf8")))
-);
-app.get("/api/admin/checkPOF/:id", (_, res) =>
-  res.json(JSON.parse(fs.readFileSync(POF_FILE, "utf8")))
-);
-app.get("/api/admin/checkJackpot/:id", (_, res) =>
-  res.json(JSON.parse(fs.readFileSync(JACKPOT_FILE, "utf8")))
-);
+// 🔍 Vérif Millionnaire
+app.get("/api/admin/checkTicket/:id", (req, res) => {
+  const data = JSON.parse(fs.readFileSync(TICKET_FILE, "utf8"));
+  const t = data.find(tt => tt.id === req.params.id);
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+  res.json(t);
+});
+
+// 🔍 Vérif Pile ou Face
+app.get("/api/admin/checkPOF/:id", (req, res) => {
+  const data = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
+  const t = data.find(tt => tt.id === req.params.id);
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+  res.json(t);
+});
+
+// 🔍 Vérif Jackpot
+app.get("/api/admin/checkJackpot/:id", (req, res) => {
+  const data = JSON.parse(fs.readFileSync(JACKPOT_FILE, "utf8"));
+  const t = data.find(tt => tt.id === req.params.id);
+  if (!t) return res.status(404).json({ error: "Ticket introuvable" });
+  res.json(t);
+});
+
 app.post("/api/admin/reset", (_, res) => {
   regenerateTickets();
   regeneratePOFTickets();
