@@ -246,7 +246,7 @@ app.get("/api/buyPOF", (req, res) => {
   res.json({ tickets: bought });
 });
 
-// 🪙 Lecture (affichage du ticket sans le marquer utilisé)
+// 🪙 Lecture Pile ou Face (grattage + marquage immédiat)
 app.get("/api/pof/ticket/:id", (req, res) => {
   const { code } = req.query;
   const data = JSON.parse(fs.readFileSync(POF_FILE, "utf8"));
@@ -255,11 +255,16 @@ app.get("/api/pof/ticket/:id", (req, res) => {
   if (!t) return res.status(404).json({ error: "Ticket introuvable" });
   if (t.code !== code) return res.status(403).json({ error: "Code invalide" });
 
-  // si déjà utilisé, bloquer
+  // déjà utilisé → on bloque
   if (t.used) return res.status(403).json({ error: "Ticket déjà utilisé" });
+
+  // ✅ première ouverture → on le marque utilisé
+  t.used = true;
+  fs.writeFileSync(POF_FILE, JSON.stringify(data, null, 2));
 
   res.json(t);
 });
+
 
 // 🪙 Marquer comme utilisé (appelé après grattage)
 app.post("/api/pof/use/:id", (req, res) => {
@@ -297,7 +302,7 @@ app.get("/api/buyJackpot", (req, res) => {
   res.json({ tickets: bought });
 });
 
-// 🎰 Lecture (affichage du ticket sans le marquer utilisé)
+// 🎰 Lecture Jackpot (grattage + marquage immédiat)
 app.get("/api/jackpot/ticket/:id", (req, res) => {
   const { code } = req.query;
   const data = JSON.parse(fs.readFileSync(JACKPOT_FILE, "utf8"));
@@ -308,8 +313,13 @@ app.get("/api/jackpot/ticket/:id", (req, res) => {
 
   if (t.used) return res.status(403).json({ error: "Ticket déjà utilisé" });
 
+  // ✅ première ouverture → on le marque utilisé
+  t.used = true;
+  fs.writeFileSync(JACKPOT_FILE, JSON.stringify(data, null, 2));
+
   res.json(t);
 });
+
 
 // 🎰 Marquer comme utilisé (appelé après grattage)
 app.post("/api/jackpot/use/:id", (req, res) => {
